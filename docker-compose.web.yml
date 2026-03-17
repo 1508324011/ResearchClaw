@@ -1,0 +1,18 @@
+services:
+  researchclaw-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - '3456:3456'
+    environment:
+      RESEARCH_CLAW_HOST: 0.0.0.0
+      PORT: 3456
+      RESEARCH_CLAW_STORAGE_DIR: /data/researchclaw
+      RESEARCH_CLAW_WEB_ROOT_DIR: /app/dist/web
+    volumes:
+      - researchclaw-web-data:/data/researchclaw
+    restart: unless-stopped
+
+volumes:
+  researchclaw-web-data:
