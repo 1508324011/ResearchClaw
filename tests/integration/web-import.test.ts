@@ -158,4 +158,39 @@ describe('web import routes', () => {
       error: 'Task 4 only supports arXiv identifier imports.',
     });
   });
+
+  it('rejects invalid identifier payloads with a 400 response', async () => {
+    const { baseUrl } = await startServer();
+
+    const response = await fetch(`${baseUrl}/import/identifier`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ value: 12345, kind: 'arxiv' }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Invalid import identifier payload.',
+    });
+  });
+
+  it('rejects oversized PDF uploads with a 413 response', async () => {
+    const { baseUrl } = await startServer();
+    const formData = new FormData();
+    formData.set(
+      'file',
+      new Blob(['x'.repeat(2 * 1024 * 1024 + 1)], { type: 'application/pdf' }),
+      'oversized.pdf',
+    );
+
+    const response = await fetch(`${baseUrl}/import/pdf`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Request body exceeds the 2 MB upload limit.',
+    });
+  });
 });

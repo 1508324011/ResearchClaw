@@ -114,7 +114,12 @@ export class WebImportService {
   }
 
   async importByIdentifier(input: unknown): Promise<ImportPaperResponse> {
-    const request = ImportByIdentifierRequestSchema.parse(input);
+    const parsedRequest = ImportByIdentifierRequestSchema.safeParse(input);
+    if (!parsedRequest.success) {
+      throw new WebImportError(400, 'Invalid import identifier payload.');
+    }
+
+    const request = parsedRequest.data;
     if (request.kind !== 'arxiv') {
       throw new WebImportError(400, 'Task 4 only supports arXiv identifier imports.');
     }

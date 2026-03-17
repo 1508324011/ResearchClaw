@@ -1,6 +1,8 @@
 import http from 'http';
 import { WebImportError, WebImportService } from '../services/web-import.service';
 
+const MAX_IMPORT_BODY_BYTES = 2 * 1024 * 1024;
+
 function sendJson(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(body));
@@ -8,9 +10,14 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
 
 async function readBody(req: http.IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
+  let totalBytes = 0;
 
   for await (const chunk of req) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.byteLength;
+    if (totalBytes > MAX_IMPORT_BODY_BYTES) {
+      throw new WebImportError(413, 'Request body exceeds the 2 MB upload limit.');
+    }
     chunks.push(buffer);
   }
 
