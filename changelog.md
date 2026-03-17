@@ -2,6 +2,23 @@
 
 ## 2026-03-17
 
+### feat: add server-owned web import flows for the first web slice
+
+**Summary**: Started Task 4 of the server-first web migration by adding a server-owned import entry point for uploaded PDFs and identifier-based imports.
+
+**Changes**:
+
+1. Added a new integration-test target for `/import/pdf` and `/import/identifier` so the browser import path is validated against real database and storage state
+2. Scoped the first web import slice to server-owned PDF uploads plus arXiv-first identifier imports, without browser history scanning or broader ingest refactors
+3. Reused existing paper persistence and storage behavior instead of expanding the Electron-coupled ingest pipeline into the server path
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/integration/web-import.test.ts` failed with `404` responses because `/import/pdf` and `/import/identifier` routes were not registered yet
+- Verified second RED after Oracle hardening: `npm run test -- tests/integration/web-import.test.ts` failed with 2 assertions covering invalid identifier payload handling (`500` vs `400`) and oversized PDF upload rejection (`200` vs `413`)
+- Verified GREEN after implementation: `npm run test -- tests/integration/web-import.test.ts` passed (`5 passed`)
+- Verified fresh repository checks before commit: `npm run lint` passed and `npm run test` passed (`45 passed`, `1 skipped`; `507 passed`, `48 skipped`)
+
 ### feat: add server runtime skeleton for web workflows
 
 **Summary**: Started Task 3 of the server-first web migration by introducing a minimal server runtime skeleton for the first web slice.
