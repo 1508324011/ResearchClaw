@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-03-17
+
+### docs: add narrowed server-first web planning documents
+
+**Summary**: Added the first fork-specific server-first web planning docs for a single-user, Docker-first browser workflow focused on import, reading, notes, and search.
+
+**Changes**:
+
+1. Added a narrowed web design document for the forked server-first browser direction
+2. Added a narrowed implementation plan that removes first-phase `projects` and remote-agent scope
+3. Recorded the official first-release scope as import + reading + notes + search
+
+**Test validation**:
+
+- Verified `docs/plans/2026-03-17-researchclaw-web-design.md` exists in the worktree
+- Verified `docs/plans/2026-03-17-researchclaw-web-implementation.md` exists in the worktree
+- Verified both documents were written in full and align with the narrowed first-release scope
+
 ## 2026-03-15 v0.0.3
 
 ### Release: v0.0.3 - i18n improvements
