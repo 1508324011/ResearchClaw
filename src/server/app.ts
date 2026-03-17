@@ -6,6 +6,7 @@ import { handleJobsRoute, isJobsRoute } from './routes/jobs.routes';
 import { handlePapersRoute, isPapersRoute } from './routes/papers.routes';
 import { handleReadingRoute, isReadingRoute } from './routes/reading.routes';
 import { handleSearchRoute, isSearchRoute } from './routes/search.routes';
+import { handleWebRoute } from './routes/web.routes';
 
 function sendJson(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
@@ -25,8 +26,12 @@ export function createResearchClawServerApp(config: ServerConfig = getServerConf
         return;
       }
 
+      if (await handleWebRoute(req, res, config)) {
+        return;
+      }
+
       if (isPapersRoute(req)) {
-        handlePapersRoute(res);
+        await handlePapersRoute(req, res);
         return;
       }
 

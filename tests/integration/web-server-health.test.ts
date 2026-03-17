@@ -79,8 +79,8 @@ describe('web server runtime', () => {
     });
 
     const papersResponse = await fetch(`${baseUrl}/papers`);
-    expect(papersResponse.status).toBe(501);
-    await expect(papersResponse.json()).resolves.toMatchObject({ route: 'papers' });
+    expect(papersResponse.status).toBe(200);
+    await expect(papersResponse.json()).resolves.toMatchObject({ items: [], total: 0 });
 
     const readingResponse = await fetch(`${baseUrl}/reading/test-paper-id`);
     expect(readingResponse.status).toBe(404);
