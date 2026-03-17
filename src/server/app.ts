@@ -1,6 +1,7 @@
 import http from 'http';
 import { getServerConfig, type ServerConfig } from './config/server-config';
 import { handleHealthRoute, isHealthRoute } from './routes/health.routes';
+import { handleImportRoute, isImportRoute } from './routes/import.routes';
 import { handleJobsRoute, isJobsRoute } from './routes/jobs.routes';
 import { handlePapersRoute, isPapersRoute } from './routes/papers.routes';
 import { handleReadingRoute, isReadingRoute } from './routes/reading.routes';
@@ -12,10 +13,15 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
 }
 
 export function createResearchClawServerApp(config: ServerConfig = getServerConfig()): http.Server {
-  return http.createServer((req, res) => {
+  return http.createServer(async (req, res) => {
     try {
       if (isHealthRoute(req)) {
         handleHealthRoute(res, config);
+        return;
+      }
+
+      if (isImportRoute(req)) {
+        await handleImportRoute(req, res);
         return;
       }
 
