@@ -2,6 +2,25 @@
 
 ## 2026-03-17
 
+### feat: add web reading search and job event routes
+
+**Summary**: Completed Task 5 of the server-first web migration by exposing browser-safe reading detail, note save, search, job status, and SSE job stream routes backed by an Electron-free in-memory job bus.
+
+**Changes**:
+
+1. Added `src/server/jobs/job-bus.ts` plus `tests/integration/web-job-stream.test.ts` to provide server-owned job snapshots, single-job lookup, global SSE, and per-job SSE without relying on `BrowserWindow.webContents.send`
+2. Replaced the reading and search skeleton routes with real Task 5 handlers for `GET /reading/:paperId`, `POST /reading/:paperId/notes`, `POST /reading/note`, and `GET /search`, including semantic-search fallback mapping back into the shared web contracts
+3. Updated `tests/integration/web-server-health.test.ts` so the server health/runtime expectations now reflect Task 5 behavior instead of the old Task 3 `501` skeleton responses
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/integration/web-reading-search.test.ts` failed with `501/404` responses because reading and search routes were still skeletons
+- Verified true RED first: `npm run test -- tests/integration/web-job-stream.test.ts` failed because `src/server/jobs/job-bus.ts` did not exist yet
+- Verified second RED for semantic fallback correctness: `npm run test -- tests/integration/web-reading-search.test.ts` failed because semantic fallback responses used synthetic timestamps instead of real paper summary fields
+- Verified GREEN after implementation: `npm run test -- tests/integration/web-reading-search.test.ts` passed (`4 passed`)
+- Verified GREEN after implementation: `npm run test -- tests/integration/web-job-stream.test.ts` passed (`3 passed`)
+- Verified Task 5 runtime expectations: `npm run test -- tests/integration/web-server-health.test.ts` passed (`3 passed`)
+
 ### feat: add server-owned web import flows for the first web slice
 
 **Summary**: Started Task 4 of the server-first web migration by adding a server-owned import entry point for uploaded PDFs and identifier-based imports.
