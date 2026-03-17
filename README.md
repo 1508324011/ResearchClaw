@@ -5,11 +5,11 @@
 <h1 align="center">ResearchClaw</h1>
 
 <p align="center">
-  <strong>AI-Powered Research Desktop App</strong>
+  <strong>AI-powered research workspace for desktop and single-user web workflows</strong>
 </p>
 
 <p align="center">
-  Literature management, smart reading notes, and research idea generation — all in one native app
+  ResearchClaw keeps the original Electron desktop app and now adds a server-first, Docker-first web runtime for import, library, search, reading, and notes.
 </p>
 
 <p align="center">
@@ -23,7 +23,14 @@
 
 ## What is ResearchClaw?
 
-**ResearchClaw** is a standalone **Electron desktop app** for researchers. It combines AI-powered paper management, interactive reading, and idea generation in a clean interface — no browser, no server, no plugin required.
+**ResearchClaw** started as a standalone **Electron desktop app** for researchers. This fork keeps that desktop app intact while extending it into a **server-first, single-user, Docker-first web runtime** so the core paper workflow can also run in a browser.
+
+### Current fork status
+
+- **Desktop app remains available** for the original Electron workflow.
+- **Web runtime is now available for the first browser slice**: library, arXiv identifier import, search, reader, and notes.
+- **Same-origin runtime**: one Node server serves both the browser app and the web APIs.
+- **Docker-first deployment path**: build `dist/web` + `dist/server/index.js`, then run as a single service.
 
 ## Screenshots
 
@@ -37,69 +44,112 @@ _Today's papers with AI-generated tags (transformer, nlp, planning, instruction-
 
 ![Reading Cards](assets/screenshot_02.png)
 
-_AI-powered reading interface with structured note-taking cards_
+_AI-powered reading interface with structured note-taking cards._
 
 ### Projects & Ideas
 
 ![Projects](assets/screenshot_v3.png)
 
-_Organize papers into projects and generate AI-powered research ideas_
+_Organize papers into projects and generate AI-powered research ideas._
 
 ## Key Features
 
-| Feature               | Description                                                                              |
-| :-------------------- | :--------------------------------------------------------------------------------------- |
-| **Dashboard**         | Browse today's arXiv papers with AI-categorized tags at a glance                         |
-| **Paper Import**      | Batch import from Chrome history, or download single papers by arXiv ID/URL              |
-| **AI Reading**        | Open PDFs with side-by-side chat; AI fills structured reading cards                      |
-| **Note Editing**      | Rich-text editor with Vibe (AI) / Manual mode toggle                                     |
-| **Multi-Layer Tags**  | Auto-tag papers by domain / method / topic; manage tags with batch operations            |
-| **Library**           | Filter papers by category, tag, year; search across title and abstract                   |
-| **Projects**          | Organize papers and repos into research projects; generate AI ideas from your collection |
-| **Agentic Search**    | AI autonomously searches your library using multi-step tool calling                      |
-| **Token Usage**       | Track API usage with animated line charts and GitHub-style activity heatmap              |
-| **Multi-Provider AI** | Configure Anthropic, OpenAI, Gemini, or any OpenAI-compatible API                        |
-| **CLI Tools**         | Run Claude Code, Codex, or Gemini CLI directly inside the app                            |
-| **Proxy Support**     | HTTP/SOCKS proxy for downloads and API calls (useful in restricted networks)             |
+| Area                    | Description                                                                                       |
+| :---------------------- | :------------------------------------------------------------------------------------------------ |
+| **Desktop app**         | Original Electron workflow for dashboards, projects, chat-heavy reading, and broader app features |
+| **Web library**         | Browser-native paper list backed by `GET /papers`                                                 |
+| **Web import**          | Browser-native arXiv identifier import backed by `POST /papers/import`                            |
+| **Web search**          | Same-origin text/semantic search via `GET /search`                                                |
+| **Web reader**          | Browser-native paper summary + latest note preview via `GET /reading/:paperId`                    |
+| **Web notes**           | Save structured note summaries via `POST /reading/:paperId/notes`                                 |
+| **Job APIs**            | Server-owned job list/status/SSE stream for long-running browser workflows                        |
+| **Single-user runtime** | Server-first workflow optimized for one researcher and Docker deployment                          |
 
 ## Requirements
 
 - macOS 12+ (arm64 / x64), Windows 10+ (x64 / arm64), or Linux (x64 / arm64)
-- Node.js >= 18 (for building from source)
+- Node.js >= 20 recommended
+- npm >= 10 recommended
 
 ## Quick Start
 
+### Desktop development (original app)
+
 ```bash
-# Clone and install
 git clone https://github.com/Noietch/ResearchClaw.git
 cd ResearchClaw
 npm install
 
-# Development mode
+# Electron desktop development
 npm run dev
 
-# Build and package
-npm run release:mac    # macOS → .dmg (arm64 + x64)
-npm run release:win    # Windows → NSIS installer (x64 + arm64)
-npm run release:linux  # Linux → AppImage (x64 + arm64)
+# Desktop release builds
+npm run release:mac
+npm run release:win
+npm run release:linux
 ```
+
+### Web runtime development (this fork)
+
+```bash
+git clone https://github.com/Noietch/ResearchClaw.git
+cd ResearchClaw
+npm install
+
+# Build the browser client + Node server runtime
+npm run build:web
+
+# Start the same-origin web runtime
+npm run start:web
+```
+
+Then open `http://localhost:3456` in your browser.
+
+### Docker-first runtime
+
+```bash
+docker compose -f docker-compose.web.yml up --build
+```
+
+This publishes the same single-user runtime on `http://localhost:3456` and stores data in the named Docker volume `researchclaw-web-data`.
+
+## Web Runtime Environment Variables
+
+| Variable                     | Default                      | Purpose                                        |
+| :--------------------------- | :--------------------------- | :--------------------------------------------- |
+| `RESEARCH_CLAW_HOST`         | `0.0.0.0`                    | Bind host for the Node HTTP server             |
+| `PORT`                       | `3456`                       | Port for the same-origin web runtime           |
+| `RESEARCH_CLAW_STORAGE_DIR`  | platform default storage dir | Storage root for SQLite + imported paper files |
+| `RESEARCH_CLAW_WEB_ROOT_DIR` | `dist/web`                   | Directory containing the built browser app     |
 
 ## Architecture
 
-```
+```text
 src/
-  main/       # Electron main process (IPC handlers, services, stores)
-  renderer/   # Vite + React UI
-  shared/     # Shared types, utils, prompts
+  main/       # Electron main process, IPC handlers, desktop-only workflows
+  renderer/   # Electron renderer app (Vite + React)
+  server/     # Server-first web runtime, API routes, static app serving
+  web/        # Browser-native web UI entry, router, and pages
+  shared/     # Shared contracts, prompts, and browser-safe utilities
   db/         # Prisma + SQLite repositories
 prisma/       # schema.prisma
-tests/        # Integration tests (service layer)
-scripts/      # build-main.mjs, build-release.sh
+tests/        # Unit, frontend, and integration tests
+scripts/      # build scripts for Electron and web runtime bundles
+dist/
+  renderer/   # Electron renderer build output
+  server/     # Web runtime server bundle (`dist/server/index.js`)
+  web/        # Browser client bundle (`dist/web`)
 ```
 
-- **Database**: SQLite via Prisma at `~/.researchclaw/researchclaw.db`
+- **Database**: SQLite via Prisma at `{RESEARCH_CLAW_STORAGE_DIR}/researchclaw.db`
 - **AI**: Vercel AI SDK supporting Anthropic, OpenAI, Gemini, and OpenAI-compatible providers
-- **Build**: esbuild (main process) + Vite (renderer)
+- **Build**: esbuild (Node/Electron bundles) + Vite (renderer + browser web UI)
+
+## Web Runtime Notes
+
+- The browser app and web APIs share the same origin.
+- `/search` is both a browser route and an API endpoint. HTML navigations are served when the request advertises `Accept: text/html`; JSON/API requests continue to the existing search API.
+- The current Docker/web runtime is intentionally **reliability-first**: it reuses the existing service graph, including some Electron-adjacent dependencies pulled in through `src/main/services`.
 
 ## License
 
