@@ -2,6 +2,22 @@
 
 ## 2026-03-17
 
+### feat: start shared contracts for the first web slice
+
+**Summary**: Started Task 1 implementation for the server-first web migration by adding browser-safe shared contracts for papers, reading, search, and jobs.
+
+**Changes**:
+
+1. Added first-slice shared contract modules under `src/shared/contracts/` for `papers`, `reading`, `search`, and `jobs`
+2. Added `tests/unit/web-contracts.test.ts` to lock browser-safe schemas and reject desktop-only fields like `pdfPath`
+3. Kept the scope limited to the confirmed first-release surface and excluded `projects`, remote-agent flows, and other later-phase behavior
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/unit/web-contracts.test.ts` failed because `src/shared/contracts/*` modules did not exist
+- Verified GREEN after implementation: `npm run test -- tests/unit/web-contracts.test.ts` passed (`19 passed`)
+- Verified formatting remains clean with `npm run lint`
+
 ### docs: add narrowed server-first web planning documents
 
 **Summary**: Added the first fork-specific server-first web planning docs for a single-user, Docker-first browser workflow focused on import, reading, notes, and search.
