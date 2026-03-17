@@ -1,10 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import '../support/electron-mock';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import { getServerConfig } from '../../src/server/config/server-config';
 import { createResearchClawServerApp } from '../../src/server/app';
 import { startResearchClawServer } from '../../src/server';
+import { closeTestDatabase, ensureTestDatabaseSchema, resetTestDatabase } from '../support/test-db';
 
 const activeServers = new Set<import('node:http').Server>();
+
+ensureTestDatabaseSchema();
 
 async function startServer() {
   const server = createResearchClawServerApp();
@@ -42,7 +46,15 @@ afterEach(async () => {
   delete process.env.RESEARCH_CLAW_STORAGE_DIR;
 });
 
-describe('web server runtime skeleton', () => {
+beforeEach(async () => {
+  await resetTestDatabase();
+});
+
+afterAll(async () => {
+  await closeTestDatabase();
+});
+
+describe('web server runtime', () => {
   it('loads single-user server config from RESEARCH_CLAW_STORAGE_DIR', () => {
     process.env.RESEARCH_CLAW_STORAGE_DIR = '/tmp/researchclaw-task3-storage';
 
@@ -71,20 +83,24 @@ describe('web server runtime skeleton', () => {
     await expect(papersResponse.json()).resolves.toMatchObject({ route: 'papers' });
 
     const readingResponse = await fetch(`${baseUrl}/reading/test-paper-id`);
-    expect(readingResponse.status).toBe(501);
-    await expect(readingResponse.json()).resolves.toMatchObject({ route: 'reading' });
+    expect(readingResponse.status).toBe(404);
+    await expect(readingResponse.json()).resolves.toMatchObject({ error: 'Paper not found' });
 
     const readingIndexResponse = await fetch(`${baseUrl}/reading`);
-    expect(readingIndexResponse.status).toBe(501);
-    await expect(readingIndexResponse.json()).resolves.toMatchObject({ route: 'reading' });
+    expect(readingIndexResponse.status).toBe(404);
+    await expect(readingIndexResponse.json()).resolves.toMatchObject({ error: 'Not found' });
 
     const searchResponse = await fetch(`${baseUrl}/search?q=transformer`);
-    expect(searchResponse.status).toBe(501);
-    await expect(searchResponse.json()).resolves.toMatchObject({ route: 'search' });
+    expect(searchResponse.status).toBe(200);
+    await expect(searchResponse.json()).resolves.toMatchObject({
+      mode: 'text',
+      results: [],
+      total: 0,
+    });
 
     const jobsResponse = await fetch(`${baseUrl}/jobs`);
-    expect(jobsResponse.status).toBe(501);
-    await expect(jobsResponse.json()).resolves.toMatchObject({ route: 'jobs' });
+    expect(jobsResponse.status).toBe(200);
+    await expect(jobsResponse.json()).resolves.toEqual([]);
   });
 
   it('cleans up the startup error listener after the server begins listening', async () => {
