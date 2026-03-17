@@ -2,6 +2,23 @@
 
 ## 2026-03-17
 
+### feat: add server runtime skeleton for web workflows
+
+**Summary**: Started Task 3 of the server-first web migration by introducing a minimal server runtime skeleton for the first web slice.
+
+**Changes**:
+
+1. Added an integration test target for in-process server boot and route registration covering health, papers, reading, search, and jobs
+2. Scoped the first server runtime to a single-user-first Node HTTP skeleton without projects, SSH, upload, or auth behavior
+3. Reserved configuration loading for `RESEARCH_CLAW_STORAGE_DIR` in the new server runtime layer
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/integration/web-server-health.test.ts` failed because `src/server/*` modules did not exist
+- Verified second RED after Oracle hardening: `npm run test -- tests/integration/web-server-health.test.ts` failed with 2 assertions covering `/reading` route registration and startup error-listener cleanup
+- Verified GREEN after implementation: `npm run test -- tests/integration/web-server-health.test.ts` passed (`3 passed`)
+- Verified fresh repository checks before commit: `npm run lint` passed and `npm run test` passed (`44 passed`, `1 skipped`; `502 passed`, `48 skipped`)
+
 ### refactor: add transport-neutral renderer client for the first web slice
 
 **Summary**: Implemented Task 2 of the server-first web migration by adding a transport-neutral renderer client layer for first-slice papers, reading, search, and jobs while preserving Electron as the default desktop path.
