@@ -31,17 +31,17 @@ export function createResearchClawServerApp(config: ServerConfig = getServerConf
       }
 
       if (isReadingRoute(req)) {
-        handleReadingRoute(res);
+        await handleReadingRoute(req, res);
         return;
       }
 
       if (isSearchRoute(req)) {
-        handleSearchRoute(res);
+        await handleSearchRoute(req, res);
         return;
       }
 
       if (isJobsRoute(req)) {
-        handleJobsRoute(res);
+        handleJobsRoute(req, res);
         return;
       }
 
