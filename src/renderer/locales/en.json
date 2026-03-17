@@ -370,6 +370,47 @@
       "all": "All time"
     }
   },
+  "web": {
+    "shell": {
+      "title": "A quieter reading workspace",
+      "subtitle": "Move from import to search, reading, and notes without the desktop shell."
+    },
+    "nav": {
+      "library": "Library",
+      "search": "Search"
+    },
+    "library": {
+      "title": "Library",
+      "subtitle": "Your recent papers stay visible, searchable, and ready to open in the browser flow.",
+      "empty": "No papers yet. Import an arXiv paper to start the browser-native workflow.",
+      "localPaper": "Local paper",
+      "importTitle": "Import into web workspace",
+      "importHint": "Paste an arXiv identifier or URL. The server stores the paper and opens it directly in the browser reader.",
+      "importLabel": "arXiv identifier",
+      "importPlaceholder": "e.g. 2401.01234 or https://arxiv.org/abs/2401.01234",
+      "importAction": "Import paper",
+      "importing": "Importing…",
+      "openReader": "Open reader",
+      "openNotes": "Open notes"
+    },
+    "search": {
+      "title": "Search papers",
+      "subtitle": "Run the same server-first search contract the browser client will use in production.",
+      "queryLabel": "Search query",
+      "searchAction": "Search library"
+    },
+    "reader": {
+      "notesSubtitle": "Keep the latest note visible while you skim the paper summary.",
+      "openNotes": "Open notes",
+      "emptyNote": "No reading note yet. Open notes to create the first summary.",
+      "noAbstract": "This paper does not have an abstract yet."
+    },
+    "notes": {
+      "title": "Reading notes",
+      "editorLabel": "Editable note",
+      "saveHint": "Notes are saved back through the server-first reading API."
+    }
+  },
   "tagManagement": {
     "title": "Manage Tags",
     "tagCount": "{{count}} tags",

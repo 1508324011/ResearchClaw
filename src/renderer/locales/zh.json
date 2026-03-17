@@ -370,6 +370,47 @@
       "all": "全部时间"
     }
   },
+  "web": {
+    "shell": {
+      "title": "更安静的阅读工作台",
+      "subtitle": "不依赖桌面外壳，直接在浏览器里完成导入、搜索、阅读和笔记。"
+    },
+    "nav": {
+      "library": "文献库",
+      "search": "搜索"
+    },
+    "library": {
+      "title": "文献库",
+      "subtitle": "最近导入的论文会直接出现在这里，并可继续在浏览器流程中打开。",
+      "empty": "还没有论文。先导入一篇 arXiv 论文，启动浏览器原生流程。",
+      "localPaper": "本地论文",
+      "importTitle": "导入到 Web 工作区",
+      "importHint": "粘贴 arXiv 编号或 URL。服务器会保存论文，并直接在浏览器阅读页中打开。",
+      "importLabel": "arXiv 编号",
+      "importPlaceholder": "例如 2401.01234 或 https://arxiv.org/abs/2401.01234",
+      "importAction": "导入论文",
+      "importing": "导入中…",
+      "openReader": "打开阅读页",
+      "openNotes": "打开笔记"
+    },
+    "search": {
+      "title": "搜索论文",
+      "subtitle": "直接调用生产环境会用到的 server-first 搜索接口。",
+      "queryLabel": "搜索词",
+      "searchAction": "搜索文献库"
+    },
+    "reader": {
+      "notesSubtitle": "浏览摘要时，右侧始终显示最新笔记。",
+      "openNotes": "打开笔记",
+      "emptyNote": "还没有阅读笔记，打开笔记页创建第一条摘要。",
+      "noAbstract": "这篇论文暂时还没有摘要。"
+    },
+    "notes": {
+      "title": "阅读笔记",
+      "editorLabel": "可编辑笔记",
+      "saveHint": "这里的保存会直接回写到 server-first 阅读接口。"
+    }
+  },
   "tagManagement": {
     "title": "管理标签",
     "tagCount": "{{count}} 个标签",
