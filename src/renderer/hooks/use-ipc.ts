@@ -19,7 +19,17 @@ import type {
   UserProfile,
   TaskResultItem,
   ExperimentReportItem,
+  GetReadingDetailResponse,
+  ImportByIdentifierRequest,
+  ImportPaperResponse,
+  JobStatus,
+  ListPapersRequest,
+  ListPapersResponse,
+  SaveReadingNoteRequest,
+  SaveReadingNoteResponse,
+  SearchResponse,
 } from '@shared';
+import type { ResearchClawClient } from '../lib/researchclaw-client';
 
 export type { TaskResultItem, ExperimentReportItem };
 
@@ -44,9 +54,99 @@ function getElectronAPI() {
   return typeof window === 'undefined' ? undefined : window.electronAPI;
 }
 
+let configuredResearchClawClient: ResearchClawClient | null = null;
+
+export function setResearchClawClient(client: ResearchClawClient | null) {
+  configuredResearchClawClient = client;
+}
+
+export function getResearchClawClient() {
+  return configuredResearchClawClient;
+}
+
+export function clearResearchClawClient() {
+  configuredResearchClawClient = null;
+}
+
+function getFallbackJobId(channel: string) {
+  return channel.startsWith('jobs:stream:') ? channel.slice('jobs:stream:'.length) : null;
+}
+
+function toLegacyPaperItem(summary: ListPapersResponse['items'][number]): PaperItem {
+  return {
+    id: summary.id,
+    shortId: summary.shortId ?? '',
+    title: summary.title,
+    authors: summary.authors,
+    year: summary.year,
+    abstract: summary.abstract,
+    tagNames: summary.tagNames,
+    sourceUrl: summary.sourceUrl,
+    createdAt: summary.createdAt,
+  };
+}
+
+function toLegacySearchResponse(searchResponse: SearchResponse): {
+  results: SearchResultItem[];
+  total: number;
+} {
+  return {
+    results: searchResponse.results.map((item) => ({
+      paperId: item.id,
+      title: item.title,
+      authors: item.authors.map((name) => ({ name })),
+      year: item.year ?? null,
+      abstract: item.abstract ?? null,
+      citationCount: 0,
+      externalIds: item.shortId ? { ArXiv: item.shortId } : {},
+      url: item.sourceUrl ?? null,
+    })),
+    total: searchResponse.total,
+  };
+}
+
+async function invokeThroughFallback<T>(channel: string, ...args: unknown[]): Promise<T> {
+  const client = configuredResearchClawClient;
+
+  if (!client) {
+    throw new Error(`IPC unavailable for channel "${channel}": Electron preload API not found.`);
+  }
+
+  switch (channel) {
+    case 'papers:list': {
+      const response = await client.listPapers((args[0] as ListPapersRequest | undefined) ?? {});
+      return response.items.map(toLegacyPaperItem) as T;
+    }
+    case 'papers:importByIdentifier':
+      return client.importByIdentifier(args[0] as ImportByIdentifierRequest) as Promise<T>;
+    case 'reading:getDetail':
+      return client.getReadingDetail({ paperId: args[0] as string }) as Promise<T>;
+    case 'reading:saveNote':
+      return client.saveReadingNote(args[0] as SaveReadingNoteRequest) as Promise<T>;
+    case 'papers:search': {
+      const response = await client.search({
+        query: args[0] as string,
+        limit: args[1] as number | undefined,
+        mode: 'text',
+      });
+      return toLegacySearchResponse(response) as T;
+    }
+    case 'jobs:listStatus':
+      return client.listJobStatus() as Promise<T>;
+    default:
+      throw new Error(
+        `IPC unavailable for channel "${channel}": fallback client does not support it.`,
+      );
+  }
+}
+
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const electronAPI = getElectronAPI();
   if (!electronAPI) {
+    if (configuredResearchClawClient) {
+      return invokeThroughFallback<T>(channel, ...args);
+    }
+
     return Promise.reject(
       new Error(`IPC unavailable for channel "${channel}": Electron preload API not found.`),
     );
@@ -620,12 +720,7 @@ export interface SshConfigEntry {
 
 export const ipc = {
   // Papers
-  listPapers: (query?: {
-    q?: string;
-    year?: number;
-    tag?: string;
-    importedWithin?: 'today' | 'week' | 'month' | 'all';
-  }) => invoke<PaperItem[]>('papers:list', query ?? {}),
+  listPapers: (query?: ListPapersRequest) => invoke<PaperItem[]>('papers:list', query ?? {}),
   listTodayPapers: () => invoke<PaperItem[]>('papers:listToday'),
   createPaper: (input: Record<string, unknown>) => invoke<PaperItem>('papers:create', input),
   importLocalPdf: (filePath: string) => invoke<PaperItem>('papers:importLocalPdf', filePath),
@@ -665,6 +760,52 @@ export const ipc = {
   exportBibtex: (paperIds: string[]) => invoke<string>('papers:exportBibtex', paperIds),
   extractGithubUrl: (input: { title: string; abstract?: string }) =>
     invoke<string | null>('papers:extractGithubUrl', input),
+
+  importByIdentifier: (request: ImportByIdentifierRequest) =>
+    invoke<ImportPaperResponse>('papers:importByIdentifier', request),
+
+  getReadingDetail: (paperId: string) =>
+    invoke<GetReadingDetailResponse>('reading:getDetail', paperId),
+
+  saveReadingNote: (request: SaveReadingNoteRequest) =>
+    invoke<SaveReadingNoteResponse>('reading:saveNote', request),
+
+  listImportStatus: () => invoke<JobStatus[]>('jobs:listStatus'),
+
+  onJobProgress: (channel: string, listener: (...args: unknown[]) => void) => {
+    const electronAPI = getElectronAPI();
+    if (electronAPI) {
+      return electronAPI.on(channel, listener);
+    }
+
+    const client = getResearchClawClient();
+    const jobId = getFallbackJobId(channel);
+
+    if (!client || !jobId) {
+      return () => undefined;
+    }
+
+    let unsubscribe = () => undefined;
+    let stopRequested = false;
+
+    void client
+      .subscribeJobEvents(jobId, (event) => {
+        listener(event);
+      })
+      .then((cleanup) => {
+        if (stopRequested) {
+          cleanup();
+          return;
+        }
+
+        unsubscribe = cleanup;
+      });
+
+    return () => {
+      stopRequested = true;
+      unsubscribe();
+    };
+  },
 
   // Tagging
   tagPaper: (paperId: string) =>
