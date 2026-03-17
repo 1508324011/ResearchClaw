@@ -30,6 +30,7 @@ const defaultMocks: Record<string, unknown> = {
   'papers:list': [],
   'projects:list': [],
   'providers:list': [],
+  'agent-todo:list-agents': [],
   'agents:list': [],
   'window:isMaximized': false,
 };

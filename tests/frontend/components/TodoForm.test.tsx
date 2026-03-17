@@ -20,7 +20,7 @@ describe('TodoForm', () => {
     vi.clearAllMocks();
     // Mock IPC responses
     mockIPCResponse('projects:list', []);
-    mockIPCResponse('agents:list', [
+    mockIPCResponse('agent-todo:list-agents', [
       {
         id: 'agent-1',
         name: 'Test Agent',
@@ -30,8 +30,8 @@ describe('TodoForm', () => {
         enabled: true,
       },
     ]);
-    mockIPCResponse('agent-todos:create', { id: 'new-todo-id' });
-    mockIPCResponse('agent-todos:update', { success: true });
+    mockIPCResponse('agent-todo:create', { id: 'new-todo-id' });
+    mockIPCResponse('agent-todo:update', { success: true });
   });
 
   describe('Rendering', () => {
@@ -184,7 +184,7 @@ describe('TodoForm', () => {
 
     it('disables submit button while submitting', async () => {
       const { user } = setupTest();
-      mockIPCResponse('agent-todos:create', new Promise(() => {})); // Never resolves
+      mockIPCResponse('agent-todo:create', new Promise(() => {})); // Never resolves
 
       render(
         <TodoForm
@@ -285,7 +285,7 @@ describe('TodoForm', () => {
           sshServerId: 'ssh-1',
         },
       ]);
-      mockIPCResponse('ssh-servers:get', {
+      mockIPCResponse('ssh:get-server', {
         id: 'ssh-1',
         label: 'Test Server',
         host: 'example.com',

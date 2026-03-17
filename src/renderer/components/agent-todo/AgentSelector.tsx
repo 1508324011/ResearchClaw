@@ -15,7 +15,24 @@ export function AgentSelector({ value, onChange }: AgentSelectorProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    ipc.listAgents().then(setAgents).catch(console.error);
+    let mounted = true;
+
+    ipc
+      .listAgents()
+      .then((result) => {
+        if (!mounted) return;
+        setAgents(Array.isArray(result) ? result : []);
+      })
+      .catch((error) => {
+        console.error(error);
+        if (mounted) {
+          setAgents([]);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Close on outside click
