@@ -51,10 +51,10 @@ plan/
 models/
 
 # Temporary / Development files
+.worktrees/
 *.tmp
 release_notes.md
 scripts/test-*.mjs
 scripts/restore-*.mjs
 test-*.cjs
 test-*.mjs
-
