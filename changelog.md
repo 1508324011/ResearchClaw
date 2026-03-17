@@ -2,6 +2,23 @@
 
 ## 2026-03-17
 
+### refactor: add transport-neutral renderer client for the first web slice
+
+**Summary**: Implemented Task 2 of the server-first web migration by adding a transport-neutral renderer client layer for first-slice papers, reading, search, and jobs while preserving Electron as the default desktop path.
+
+**Changes**:
+
+1. Added `src/renderer/lib/researchclaw-client.ts`, `electron-client.ts`, and `http-client.ts` to define and implement the first renderer-side transport boundary
+2. Updated `src/renderer/hooks/use-ipc.ts` to support a narrow fallback client for supported first-slice channels when preload is unavailable
+3. Exported the shared contracts from `src/shared/index.ts` so renderer code can consume the Task 1 contract types through the existing alias
+4. Added `tests/unit/http-client.test.ts` to cover HTTP fetch behavior, fallback routing, job stream fallback, CRLF SSE parsing, and text-only Electron search semantics
+
+**Test validation**:
+
+- Verified true RED after adding edge-case expectations: `npm run test -- tests/unit/http-client.test.ts` failed with 3 failures covering CRLF SSE parsing, fallback unsubscribe timing, and Electron non-text search handling
+- Verified GREEN after implementation: `npm run test -- tests/unit/http-client.test.ts` passed (`15 passed`)
+- Verified fresh repository checks before commit: `npm run lint` passed and `npm run test` passed (`43 passed`, `1 skipped`; `499 passed`, `48 skipped`)
+
 ### feat: start shared contracts for the first web slice
 
 **Summary**: Started Task 1 implementation for the server-first web migration by adding browser-safe shared contracts for papers, reading, search, and jobs.
