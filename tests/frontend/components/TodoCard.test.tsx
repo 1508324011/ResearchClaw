@@ -93,16 +93,13 @@ describe('TodoCard', () => {
 
   describe('Status Display', () => {
     it('shows pending status dot for pending todo', () => {
-      render(<TodoCard todo={mockTodo} onRefresh={mockOnRefresh} />);
-      const statusDot =
-        screen.getByRole('generic', { name: /status/i }) ||
-        document.querySelector('[data-status="pending"]');
-      expect(statusDot || document.querySelector('.bg-gray-300')).toBeTruthy();
+      const { container } = render(<TodoCard todo={mockTodo} onRefresh={mockOnRefresh} />);
+      expect(container.querySelector('.bg-gray-400')).toBeInTheDocument();
     });
 
     it('shows running status for running todo', () => {
-      render(<TodoCard todo={mockRunningTodo} onRefresh={mockOnRefresh} />);
-      expect(screen.getByText(/\d+[mh] ago/)).toBeInTheDocument();
+      const { container } = render(<TodoCard todo={mockRunningTodo} onRefresh={mockOnRefresh} />);
+      expect(container.querySelector('.bg-notion-text.animate-pulse')).toBeInTheDocument();
     });
   });
 
@@ -116,27 +113,24 @@ describe('TodoCard', () => {
 
     it('calls ipc.runAgentTodo when Run button is clicked', async () => {
       const { user } = setupTest();
-      mockIPCResponse('agent-todos:run', undefined);
+      mockIPCResponse('agent-todo:run', undefined);
 
       render(<TodoCard todo={mockTodo} onRefresh={mockOnRefresh} />);
       const runButton = screen.getByRole('button', { name: /run/i });
 
       await user.click(runButton);
 
-      expect(window.electronAPI?.invoke).toHaveBeenCalledWith('agent-todos:run', 'todo-1');
+      expect(window.electronAPI?.invoke).toHaveBeenCalledWith('agent-todo:run', 'todo-1');
     });
 
     it('calls onRefresh after successful run', async () => {
       const { user } = setupTest();
-      mockIPCResponse('agent-todos:run', undefined);
+      mockIPCResponse('agent-todo:run', undefined);
 
       render(<TodoCard todo={mockTodo} onRefresh={mockOnRefresh} />);
       const runButton = screen.getByRole('button', { name: /run/i });
 
       await user.click(runButton);
-      // Wait for async operation
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
       expect(mockOnRefresh).toHaveBeenCalled();
     });
   });
@@ -157,26 +151,24 @@ describe('TodoCard', () => {
 
     it('calls ipc.stopAgentTodo when Stop button is clicked', async () => {
       const { user } = setupTest();
-      mockIPCResponse('agent-todos:stop', undefined);
+      mockIPCResponse('agent-todo:stop', undefined);
 
       render(<TodoCard todo={mockRunningTodo} onRefresh={mockOnRefresh} />);
       const stopButton = screen.getByRole('button', { name: /stop/i });
 
       await user.click(stopButton);
 
-      expect(window.electronAPI?.invoke).toHaveBeenCalledWith('agent-todos:stop', 'todo-2');
+      expect(window.electronAPI?.invoke).toHaveBeenCalledWith('agent-todo:stop', 'todo-2');
     });
 
     it('calls onRefresh after successful stop', async () => {
       const { user } = setupTest();
-      mockIPCResponse('agent-todos:stop', undefined);
+      mockIPCResponse('agent-todo:stop', undefined);
 
       render(<TodoCard todo={mockRunningTodo} onRefresh={mockOnRefresh} />);
       const stopButton = screen.getByRole('button', { name: /stop/i });
 
       await user.click(stopButton);
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
       expect(mockOnRefresh).toHaveBeenCalled();
     });
   });
@@ -239,7 +231,7 @@ describe('TodoCard', () => {
 
     it('calls ipc.deleteAgentTodo when confirmed', async () => {
       const { user } = setupTest();
-      mockIPCResponse('agent-todos:delete', undefined);
+      mockIPCResponse('agent-todo:delete', undefined);
       vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       render(<TodoCard todo={mockTodo} onRefresh={mockOnRefresh} />);
@@ -247,7 +239,7 @@ describe('TodoCard', () => {
 
       await user.click(deleteButton);
 
-      expect(window.electronAPI?.invoke).toHaveBeenCalledWith('agent-todos:delete', 'todo-1');
+      expect(window.electronAPI?.invoke).toHaveBeenCalledWith('agent-todo:delete', 'todo-1');
     });
 
     it('does not call delete when cancelled', async () => {
@@ -260,22 +252,20 @@ describe('TodoCard', () => {
       await user.click(deleteButton);
 
       expect(window.electronAPI?.invoke).not.toHaveBeenCalledWith(
-        'agent-todos:delete',
+        'agent-todo:delete',
         expect.anything(),
       );
     });
 
     it('calls onRefresh after successful delete', async () => {
       const { user } = setupTest();
-      mockIPCResponse('agent-todos:delete', undefined);
+      mockIPCResponse('agent-todo:delete', undefined);
       vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       render(<TodoCard todo={mockTodo} onRefresh={mockOnRefresh} />);
       const deleteButton = screen.getByRole('button', { name: /delete/i });
 
       await user.click(deleteButton);
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
       expect(mockOnRefresh).toHaveBeenCalled();
     });
   });
@@ -298,17 +288,13 @@ describe('TodoCard', () => {
   describe('Priority Display', () => {
     it('renders priority bar when priority > 0', () => {
       render(<TodoCard todo={mockTodo} onRefresh={mockOnRefresh} />);
-      // Priority bar should be visible
-      const priorityBar =
-        document.querySelector('[class*="PriorityBar"]') ||
-        screen.getByRole('img', { hidden: true });
-      expect(priorityBar || document.querySelector('svg')).toBeTruthy();
+      expect(screen.getByLabelText('Priority: High')).toBeInTheDocument();
     });
 
     it('does not render priority bar when priority is 0', () => {
       const todoNoPriority = { ...mockTodo, priority: 0 };
       render(<TodoCard todo={todoNoPriority} onRefresh={mockOnRefresh} />);
-      // Should not have priority indicator
+      expect(screen.queryByLabelText(/Priority:/)).not.toBeInTheDocument();
     });
   });
 
