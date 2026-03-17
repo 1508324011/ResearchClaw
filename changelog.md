@@ -2,6 +2,40 @@
 
 ## 2026-03-17
 
+### feat: add docker-first web runtime packaging
+
+**Summary**: Completed Task 7 of the server-first web migration by turning the first browser slice into a runnable same-origin Node + Vite runtime with Docker packaging and deployment notes.
+
+**Changes**:
+
+1. Added the web-runtime config and serving layer so the server now defaults to Docker-friendly host binding, resolves `dist/web` as its browser root, and serves SPA HTML/assets while preserving API routing for `/search`
+2. Added the runnable build/start chain for the web runtime through `src/web/index.html`, `vite.web.config.ts`, `src/server/entry.ts`, `scripts/build-web-server.mjs`, and the new `package.json` scripts `build:web`, `build:web:server`, `build:web:client`, and `start:web`
+3. Added deployment artifacts `Dockerfile.web`, `docker-compose.web.yml`, and `docs/plans/2026-03-17-researchclaw-web-deploy-notes.md` to document the same-origin runtime, required environment variables, Docker startup flow, and the current reliability-first dependency trade-off
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/integration/web-config.test.ts` failed because config still defaulted to `127.0.0.1`, had no `webRootDir`, and `GET /` returned `404`
+- Verified Task 7 runtime expectations after implementation: `npm run test -- tests/integration/web-config.test.ts` passed (`2 passed`)
+- Verified runnable runtime artifacts: `npm run build:web` passed and produced `dist/server/index.js` plus browser assets under `dist/web`
+
+### feat: add browser-native web library and reading flow
+
+**Summary**: Completed Task 6 of the server-first web migration by adding the first browser-native UI plus the missing `/papers` server endpoints required for real browser usage.
+
+**Changes**:
+
+1. Replaced the old papers skeleton with real browser-facing routes for `GET /papers` and `POST /papers/import`, then updated the server app to await the papers route like the other web handlers
+2. Added the first browser-native app under `src/web/` with a dedicated router, library page, search page, reader page, and notes page backed by the existing transport-neutral HTTP client
+3. Added browser-focused frontend/integration coverage through `tests/integration/web-papers.test.ts`, `tests/frontend/web/*`, and updated `tests/integration/web-server-health.test.ts` so the runtime expectations match the new `/papers` behavior
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/integration/web-papers.test.ts` failed because `GET /papers` returned `501` and `POST /papers/import` returned `404`
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx tests/frontend/web/search-page.test.tsx tests/frontend/web/reader-page.test.tsx` failed because `src/web/router.tsx` did not exist yet
+- Verified GREEN after implementation: `npm run test -- tests/integration/web-papers.test.ts` passed (`2 passed`)
+- Verified GREEN after implementation: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx tests/frontend/web/search-page.test.tsx tests/frontend/web/reader-page.test.tsx` passed (`3 passed`)
+- Verified runtime health expectations after `/papers` changed: `npm run test -- tests/integration/web-server-health.test.ts` passed (`3 passed`)
+
 ### feat: add web reading search and job event routes
 
 **Summary**: Completed Task 5 of the server-first web migration by exposing browser-safe reading detail, note save, search, job status, and SSE job stream routes backed by an Electron-free in-memory job bus.
