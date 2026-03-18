@@ -1,6 +1,6 @@
-import { BrowserWindow } from 'electron';
 import { PapersRepository } from '@db';
 import { getSemanticSearchSettings } from '../store/app-settings-store';
+import { getOptionalBrowserWindows } from '../utils/optional-electron';
 import * as paperEmbeddingService from './paper-embedding.service';
 
 export type PaperProcessingStatus =
@@ -16,7 +16,7 @@ function broadcastProcessingStatus(payload: {
   status: PaperProcessingStatus;
   error?: string | null;
 }) {
-  for (const win of BrowserWindow.getAllWindows()) {
+  for (const win of getOptionalBrowserWindows()) {
     win.webContents.send('papers:processingStatus', payload);
   }
 }

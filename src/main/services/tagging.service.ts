@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { PapersRepository } from '@db';
@@ -23,6 +22,7 @@ import {
   setTagMigrationDone,
   isTagMigrationDone,
 } from '../store/app-settings-store';
+import { getOptionalBrowserWindows } from '../utils/optional-electron';
 import { getPaperExcerptCached } from './paper-text.service';
 import { getActiveModel, getModelWithKey } from '../store/model-config-store';
 
@@ -63,7 +63,7 @@ let cancelRequested = false;
 let currentAbortController: AbortController | null = null;
 
 function broadcastTaggingStatus() {
-  const wins = BrowserWindow ? BrowserWindow.getAllWindows() : [];
+  const wins = getOptionalBrowserWindows();
   for (const win of wins) {
     win.webContents.send('tagging:status', currentStatus);
   }
