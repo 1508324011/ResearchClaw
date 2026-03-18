@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import crypto from 'crypto';
 import { setupPapersIpc } from './ipc/papers.ipc';
 import { setupReadingIpc } from './ipc/reading.ipc';
 import { setupIngestIpc } from './ipc/ingest.ipc';
@@ -21,16 +20,16 @@ import { stopAllRunners } from './services/agent-runner-registry';
 import { setupCitationsIpc } from './ipc/citations.ipc';
 import { setupUserProfileIpc } from './ipc/user-profile.ipc';
 import { setupAcpChatIpc } from './ipc/acp-chat.ipc';
-import { ensureStorageDir, getDbPath, getStorageDir } from './store/storage-path';
+import { ensureStorageDir, getDbPath } from './store/storage-path';
 import { hasLanguagePreference, setLanguage } from './store/app-settings-store';
 import { PapersRepository } from '@db';
 import { resumeAutomaticPaperProcessing } from './services/paper-processing.service';
 import { resumeAutomaticCitationExtraction } from './services/citation-processing.service';
 import { stopOllamaService, warmupOllamaService } from './services/ollama.service';
 import { closeVecStore } from '../db/vec-store';
+import { ensureDatabaseInitialized } from '../db/ensure-database';
 import * as vecIndex from './services/vec-index.service';
 import * as paperEmbeddingService from './services/paper-embedding.service';
-import { getPrismaClient } from '../db/client';
 
 // CJS-compatible __dirname (esbuild bundles to CJS, so __dirname is available globally)
 // In CJS format, __dirname is automatically provided by Node.js
@@ -148,156 +147,6 @@ if (!process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
   } else {
     console.error('[Prisma] No query engine found for platform:', platform, arch);
     console.error('[Prisma] Searched paths:', nativeCandidates);
-  }
-}
-
-async function dropDerivedIndexTablesForPrisma(): Promise<void> {
-  const prisma = getPrismaClient();
-  const tables = [
-    'vec_chunks',
-    'vec_chunks_chunks',
-    'vec_chunks_info',
-    'vec_chunks_rowids',
-    'vec_chunks_vector_chunks00',
-    'vec_search_units',
-    'vec_search_units_chunks',
-    'vec_search_units_info',
-    'vec_search_units_rowids',
-    'vec_search_units_vector_chunks00',
-    'paper_search_units_fts',
-    'paper_search_units_fts_config',
-    'paper_search_units_fts_content',
-    'paper_search_units_fts_data',
-    'paper_search_units_fts_docsize',
-    'paper_search_units_fts_idx',
-    'vec_meta',
-  ];
-
-  for (const table of tables) {
-    try {
-      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS ${table}`);
-    } catch {
-      // Ignore errors if table doesn't exist
-    }
-  }
-}
-
-function getSchemaHash(schemaPath: string): string {
-  const content = fs.readFileSync(schemaPath, 'utf-8');
-  return crypto.createHash('sha256').update(content).digest('hex');
-}
-
-function getSchemaHashPath(): string {
-  return path.join(getStorageDir(), 'schema-hash.json');
-}
-
-function getSavedSchemaHash(): string | null {
-  try {
-    const hashPath = getSchemaHashPath();
-    if (fs.existsSync(hashPath)) {
-      const data = JSON.parse(fs.readFileSync(hashPath, 'utf-8'));
-      return data.hash ?? null;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-function saveSchemaHash(hash: string): void {
-  const hashPath = getSchemaHashPath();
-  fs.writeFileSync(hashPath, JSON.stringify({ hash }), 'utf-8');
-}
-
-async function ensureDatabase() {
-  try {
-    const { execSync } = await import('child_process');
-    const prismaBin = process.platform === 'win32' ? 'prisma.cmd' : 'prisma';
-    const candidatePrisma = [
-      path.join(__dirname, `../../node_modules/.bin/${prismaBin}`),
-      path.join(process.resourcesPath ?? '', `node_modules/.bin/${prismaBin}`),
-    ];
-    const candidateSchema = [
-      path.join(__dirname, '../../prisma/schema.prisma'),
-      path.join(process.resourcesPath ?? '', 'prisma/schema.prisma'),
-    ];
-    const prismaPath = candidatePrisma.find((p) => fs.existsSync(p));
-    const schemaPath = candidateSchema.find((p) => fs.existsSync(p));
-    if (!prismaPath || !schemaPath) {
-      // Packaged app: prisma CLI not available, use raw SQL to create tables
-      console.log('[ensureDatabase] Prisma CLI not found, falling back to raw SQL initialization');
-      const { initSchemaWithRawSql } = await import('../db/init-schema');
-      await initSchemaWithRawSql();
-      return;
-    }
-
-    const currentHash = getSchemaHash(schemaPath);
-    const savedHash = getSavedSchemaHash();
-
-    if (currentHash === savedHash) {
-      console.log('[ensureDatabase] Schema unchanged, skipping db push');
-      return;
-    }
-
-    console.log('[ensureDatabase] Schema changed or first run, running db push...');
-
-    // Proactively drop derived search/vector tables before db push to avoid Prisma introspect errors
-    await dropDerivedIndexTablesForPrisma();
-
-    try {
-      execSync(
-        `"${prismaPath}" db push --schema="${schemaPath}" --skip-generate --accept-data-loss`,
-        {
-          env: { ...process.env },
-          stdio: 'pipe',
-        },
-      );
-      saveSchemaHash(currentHash);
-      console.log('[ensureDatabase] db push completed successfully');
-    } catch (dbPushError) {
-      console.error('[ensureDatabase] db push failed, attempting recovery:', dbPushError);
-
-      // Try to recover by cleaning WAL files and retrying
-      const walPath = dbPath + '-wal';
-      const journalPath = dbPath + '-journal';
-      try {
-        if (fs.existsSync(walPath)) {
-          fs.unlinkSync(walPath);
-          console.log('[ensureDatabase] Removed stale WAL file');
-        }
-        if (fs.existsSync(journalPath)) {
-          fs.unlinkSync(journalPath);
-          console.log('[ensureDatabase] Removed stale journal file');
-        }
-
-        // Retry db push
-        execSync(
-          `"${prismaPath}" db push --schema="${schemaPath}" --skip-generate --accept-data-loss`,
-          {
-            env: { ...process.env },
-            stdio: 'pipe',
-          },
-        );
-        saveSchemaHash(currentHash);
-        console.log('[ensureDatabase] db push completed after recovery');
-      } catch (retryError) {
-        console.error('[ensureDatabase] Recovery failed, falling back to raw SQL initialization');
-        // Fall back to raw SQL schema initialization
-        const { initSchemaWithRawSql } = await import('../db/init-schema');
-        await initSchemaWithRawSql();
-        saveSchemaHash(currentHash);
-      }
-    }
-  } catch (err) {
-    console.error('[ensureDatabase] Failed to initialize database:', err);
-    // Final fallback: try raw SQL
-    try {
-      const { initSchemaWithRawSql } = await import('../db/init-schema');
-      await initSchemaWithRawSql();
-      console.log('[ensureDatabase] Raw SQL initialization completed as fallback');
-    } catch (fallbackError) {
-      console.error('[ensureDatabase] All database initialization attempts failed:', fallbackError);
-    }
   }
 }
 
@@ -424,7 +273,7 @@ app.whenReady().then(async () => {
     // icon load failure should not crash the app
   }
 
-  await ensureDatabase();
+  await ensureDatabaseInitialized();
   try {
     await startAgentLocalService();
   } catch (err) {

@@ -1,10 +1,12 @@
 import type http from 'http';
+import { ensureDatabaseInitialized } from '../db/ensure-database';
 import { createResearchClawServerApp } from './app';
 import { getServerConfig, type ServerConfig } from './config/server-config';
 
 export async function startResearchClawServer(
   config: ServerConfig = getServerConfig(),
 ): Promise<http.Server> {
+  await ensureDatabaseInitialized();
   const server = createResearchClawServerApp(config);
 
   await new Promise<void>((resolve, reject) => {
