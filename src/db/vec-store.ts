@@ -1,6 +1,5 @@
 import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { app } from 'electron';
 import { getStorageDir } from '../main/store/storage-path';
 
 /**
@@ -20,7 +19,7 @@ function getVecStoreDir(): string {
     return process.env.RESEARCH_CLAW_STORAGE_DIR;
   }
   // Production: use configured storage directory
-  return getStorageDir ? getStorageDir() : join(app.getPath('userData'), 'storage');
+  return getStorageDir();
 }
 
 export interface VecEntry {
