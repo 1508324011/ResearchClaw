@@ -1,6 +1,44 @@
 # Changelog
 
+## 2026-03-18
+
+### fix: initialize the web runtime database before db-backed routes run
+
+**Summary**: Fixed browser-facing `start:web` failures where db-backed routes could still return Prisma `main.Paper` table errors because startup skipped schema initialization too aggressively, both for fresh storage and for stale user storage that still had a matching schema hash file.
+
+**Changes**:
+
+1. Extracted the desktop schema-bootstrap logic into `src/db/ensure-database.ts` so database initialization now has a shared entry point instead of living only inside `src/main/index.ts`
+2. Updated `src/server/index.ts` to await shared database initialization before the web server starts listening, while keeping `src/main/index.ts` on the same shared bootstrap path so desktop and web startup do not drift
+3. Hardened the shared bootstrap so Prisma `db push` now runs with the same `RUST_LOG` sanitization already required in tests, and final initialization failure now crashes loudly instead of letting db-backed routes fail later with HTTP 500
+4. Expanded `tests/integration/web-runtime-pure-node.test.ts` to verify the built web runtime both initializes the database on a fresh storage directory and does not skip initialization when a stale schema hash exists without the core `Paper` table; the built-runtime child process now also clears inherited `DATABASE_URL` so the regression test exercises the intended storage path instead of Vitest's test database
+
+**Test validation**:
+
+- Verified true RED first: `npx vitest run tests/integration/web-runtime-pure-node.test.ts` failed because the new built-runtime regression cases reproduced `500` from `/papers` before the fix and later reproduced the stale-hash skip path before the stronger core-table guard landed
+- Verified targeted GREEN after the fix: `npx vitest run tests/integration/web-runtime-pure-node.test.ts` passed (`4 passed`), covering pure-Node startup, built-bundle startup, fresh-storage DB initialization, and stale-hash recovery without core tables
+- Verified the extracted startup path still bundles: `npm run build:web:server` passed
+- Verified the real browser-facing startup path twice: `npm run start:web` on a fresh `RESEARCH_CLAW_STORAGE_DIR` returned `200` from both `GET /search?q=graph&limit=5&mode=text` and `POST /papers/import`, and a second `npm run start:web` smoke on the default user storage path returned `200` from `GET /papers?q=graph`, `GET /search?q=graph&limit=5&mode=text`, and `POST /papers/import`
+
 ## 2026-03-17
+
+### fix: remove startup Electron dependency from the web runtime
+
+**Summary**: Fixed the first server-first web runtime so `start:web` can boot in pure Node for real browser testing instead of crashing on startup-time Electron imports.
+
+**Changes**:
+
+1. Added `src/main/utils/optional-electron.ts` so desktop-only `BrowserWindow` access is loaded lazily and treated as optional in the web runtime
+2. Removed startup-time Electron imports from `src/main/services/paper-processing.service.ts`, `src/main/services/tagging.service.ts`, and `src/db/vec-store.ts` so the built web server bundle no longer hard-requires `electron`
+3. Added `tests/integration/web-runtime-pure-node.test.ts` to prove the web server can boot from a pure Node child process, answer `/health`, and shut down cleanly without Electron mocks
+
+**Test validation**:
+
+- Verified true RED first: `npx vitest run tests/integration/web-runtime-pure-node.test.ts` failed with `Electron failed to install correctly` before the production fix
+- Verified targeted GREEN after the fix: `npx vitest run tests/integration/web-runtime-pure-node.test.ts` passed (`1 passed`)
+- Verified the real `start:web` path after bundling: `npm run build:web:server` passed and `npx vitest run tests/integration/web-runtime-pure-node.test.ts` now boots both the source server path and the built `dist/server/index.js` path in pure Node
+- Verified real built-runtime startup before landing the regression test: launching `node dist/server/index.js` with `RESEARCH_CLAW_STORAGE_DIR=<tmpdir>` returned `200` from `GET /health` with `{"status":"ok","mode":"single-user-first"}`
+- Verified fresh repository checks after the fix: `npm run lint` passed, `npm run test` passed (`50 passed`, `1 skipped`; `519 passed`, `48 skipped`), and `npm run build` passed
 
 ### feat: add docker-first web runtime packaging
 
