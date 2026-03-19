@@ -2,6 +2,41 @@
 
 ## 2026-03-19
 
+### fix: close post-phase1 browser acceptance gaps
+
+**Summary**: Closed the three concrete browser acceptance gaps found during manual Phase-1 testing by widening the reader workspace, turning DOI import into a strict complete-import flow, and raising the browser PDF upload ceiling to a realistic bounded size.
+
+**Changes**:
+
+1. Updated `src/web/pages/papers/reader/page.tsx` and `tests/frontend/web/reader-page.test.tsx` so the reader now keeps a `lg` split workspace with a sticky notes panel on common laptop widths instead of dropping notes below the PDF view until `xl`
+2. Reworked `src/server/services/web-import.service.ts`, `src/main/services/papers.service.ts`, `tests/integration/web-import.test.ts`, and `tests/unit/web-import.service.test.ts` so DOI imports only succeed after acquiring real metadata plus a downloadable PDF buffer; incomplete DOI imports now return `422` and do not create or retain hollow paper shells behind
+3. Added `src/server/routes/web-import-body-limit.ts` and updated `src/server/routes/import.routes.ts` / `src/server/routes/papers.routes.ts` so browser uploads share a 25 MB ceiling instead of the old 2 MB limit, with matching regression coverage in `tests/integration/web-import.test.ts`
+4. Updated `README.md`, `README_CN.md`, and `docs/plans/2026-03-19-web-workflow-parity-test-runbook.md` so the documented browser workflow now reflects strict DOI import behavior, realistic browser PDF uploads, and the improved reader layout expectation
+
+**Test validation**:
+
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/reader-page.test.tsx` failed because `ReaderPage` still used the old `xl` split and exposed no layout test hooks
+- Verified targeted GREEN after the reader layout fix: `npm run test:frontend -- tests/frontend/web/reader-page.test.tsx` passed (`1 passed`; `3 passed`)
+- Verified true RED first: `npm run test -- tests/integration/web-import.test.ts` failed because DOI import still returned placeholder shell papers and PDF uploads above 2 MB still returned `413`
+- Verified true RED first: `npm run test -- tests/unit/web-import.service.test.ts` failed because the DOI flow still called `create(...)` before document acquisition had actually succeeded
+- Verified targeted GREEN after DOI + upload-limit fixes: `npm run test -- tests/integration/web-import.test.ts` passed (`1 passed`; `7 passed`)
+- Verified targeted GREEN after the DOI atomicity fix: `npm run test -- tests/unit/web-import.service.test.ts` passed (`1 passed`; `1 passed`)
+- Verified fresh repository lint after final formatting: `npm run lint` passed
+- Verified fresh frontend suite after remediation: `npm run test:frontend` passed (`12 passed`; `120 passed`)
+- Verified fresh repository test suite on the authoritative sequential rerun: `npm run test` passed (`52 passed`, `1 skipped`; `537 passed`, `48 skipped`)
+- Verified fresh production builds after remediation: `npm run build` passed
+- Known non-blocking verification noise remains documented: Happy DOM iframe fetch `ECONNREFUSED`, unrelated existing `act(...)` warnings, and existing large-bundle build warnings
+
+### docs: plan post-phase1 web remediation batch
+
+**Summary**: Captured the approved post-Phase-1 remediation design for the three manual-acceptance gaps: cramped browser reader layout, placeholder DOI imports, and unrealistic browser PDF upload limits.
+
+**Changes**:
+
+1. Added `docs/plans/2026-03-19-web-manual-gap-remediation-design.md` to freeze the approved remediation contract: keep notes beside the reader on common laptop widths, make DOI import strict-complete instead of shell-paper creation, and raise the browser upload ceiling to a realistic bounded limit
+2. Added `docs/plans/2026-03-19-web-manual-gap-remediation-implementation.md` with an exact TDD execution plan covering reader layout, DOI enrichment, upload-limit changes, docs sync, verification, and final Oracle/git steps
+3. Recorded this planning session before implementation so the upcoming remediation work can proceed against a stable design instead of drifting from the user-approved direction
+
 ### docs: finalize phase-1 web workflow parity release guidance
 
 **Summary**: Completed Task 7 of the Phase-1 web workflow parity plan by refreshing the manual release runbook with the now-landed browser coverage map, recording fresh targeted and repo-wide verification evidence, and documenting the final Phase-1 release posture as implementation-complete pending manual evidence capture.

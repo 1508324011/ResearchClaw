@@ -172,14 +172,15 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 
 **Expected result:**
 
-- the browser flow accepts the DOI
-- a paper record is created server-side
-- the paper becomes available through library/search/overview
+- the browser flow only reports success after metadata and a usable PDF are both acquired
+- the resulting paper has meaningful overview content (not just the DOI string)
+- the paper becomes available through library/search/overview/reader
 
 **Failure signs:**
 
 - old arXiv-only restriction remains
-- import succeeds but no paper can be reopened later
+- import reports success but overview is empty or reader has no document
+- import creates a hollow paper shell instead of returning an error on incomplete DOI enrichment
 
 **Evidence to save:**
 
@@ -190,13 +191,13 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 
 - **Scope:** Phase 1
 - **Automated coverage:** `tests/integration/web-import.test.ts`, `tests/frontend/web/import-workspace.test.tsx`
-- **Preconditions:** A small test PDF is available locally
+- **Preconditions:** A realistic research-paper PDF smaller than 25 MB is available locally
 
 **Steps:**
 
 1. Open the import workspace.
 2. Switch to PDF upload.
-3. Upload a PDF smaller than 2 MB.
+3. Upload a PDF smaller than 25 MB.
 4. Submit the upload and wait for completion.
 
 **Expected result:**
@@ -208,7 +209,7 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 **Failure signs:**
 
 - upload control does not accept the file
-- 413 or generic 500 for a valid small PDF
+- 413 or generic 500 for a valid PDF smaller than 25 MB
 - imported paper cannot be reopened
 
 **Evidence to save:**
@@ -321,6 +322,7 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 - browser page can access the paper asset through a server route
 - the reading page remains navigable
 - notes integration still works
+- on common laptop widths, the notes summary remains beside the reader instead of dropping below it
 
 **Failure signs:**
 
@@ -400,7 +402,7 @@ curl -sS -X POST http://127.0.0.1:3456/import/identifier \
 
 **Steps:**
 
-1. Attempt to upload a PDF larger than 2 MB.
+1. Attempt to upload a PDF larger than 25 MB.
 2. If UI upload is not yet available, reproduce with the existing API path.
 
 **Expected result:**
@@ -471,8 +473,8 @@ Phase 1 is ready only when:
 **Repository-level release gate executed:**
 
 - `npm run lint` → passed
-- `npm run test` → passed on the authoritative sequential rerun (`51 passed`, `1 skipped`; `534 passed`, `48 skipped`)
-- `npm run test:frontend` → passed (`12 passed`; `119 passed`)
+- `npm run test` → passed on the authoritative sequential rerun (`52 passed`, `1 skipped`; `537 passed`, `48 skipped`)
+- `npm run test:frontend` → passed (`12 passed`; `120 passed`)
 - `npm run build` → passed
 
 ### Phase-1 case IDs with direct automated coverage
