@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import type {
+  GetPaperDetailResponse,
   GetReadingDetailResponse,
   ImportPaperResponse,
   JobStatus,
@@ -34,6 +35,10 @@ function createPaperSummary(overrides: Partial<PaperSummary> = {}): PaperSummary
   };
 }
 
+function createPdfFile(name = 'paper.pdf') {
+  return new File(['%PDF-1.4 test'], name, { type: 'application/pdf' });
+}
+
 function createMockClient() {
   const listPapers = vi.fn<ResearchClawClient['listPapers']>().mockResolvedValue({
     items: [createPaperSummary()],
@@ -43,6 +48,13 @@ function createMockClient() {
     paper: createPaperSummary({ title: 'Imported Paper' }),
     jobId: 'job-1',
   } satisfies ImportPaperResponse);
+  const importPdf = vi.fn<ResearchClawClient['importPdf']>().mockResolvedValue({
+    paper: createPaperSummary({ title: 'Imported PDF Paper' }),
+  } satisfies ImportPaperResponse);
+  const getPaperDetail = vi.fn<ResearchClawClient['getPaperDetail']>().mockResolvedValue({
+    paper: createPaperSummary(),
+    pdfUrl: '/papers/paper-1/pdf',
+  } satisfies GetPaperDetailResponse);
   const getReadingDetail = vi.fn<ResearchClawClient['getReadingDetail']>().mockResolvedValue({
     paper: createPaperSummary(),
     note: null,
@@ -77,7 +89,9 @@ function createMockClient() {
 
   const client: ResearchClawClient = {
     listPapers,
+    importPdf,
     importByIdentifier,
+    getPaperDetail,
     getReadingDetail,
     saveReadingNote,
     search,
@@ -89,7 +103,9 @@ function createMockClient() {
     client,
     spies: {
       listPapers,
+      importPdf,
       importByIdentifier,
+      getPaperDetail,
       getReadingDetail,
       saveReadingNote,
       search,
@@ -110,6 +126,11 @@ afterEach(() => {
 });
 
 describe('HttpClient', () => {
+  it('exposes the workflow parity client methods on the shared transport interface', () => {
+    expectTypeOf<ResearchClawClient['importPdf']>().toBeFunction();
+    expectTypeOf<ResearchClawClient['getPaperDetail']>().toBeFunction();
+  });
+
   it('fetches paper list with query parameters', async () => {
     const mockResponse: ListPapersResponse = {
       items: [createPaperSummary({ year: 2025 })],
@@ -155,6 +176,58 @@ describe('HttpClient', () => {
     expect(fetch).toHaveBeenCalledWith(
       `${baseUrl}/papers/import`,
       expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('uploads PDF files via multipart form data', async () => {
+    const mockResponse: ImportPaperResponse = {
+      paper: createPaperSummary({ title: 'Imported PDF Paper' }),
+    };
+    const file = createPdfFile();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      }),
+    );
+
+    const client = new HttpClient(baseUrl);
+    const result = await client.importPdf(file);
+    const requestInit = vi.mocked(fetch).mock.calls[0]?.[1];
+    const formData = requestInit?.body;
+
+    expect(result).toEqual(mockResponse);
+    expect(fetch).toHaveBeenCalledWith(
+      `${baseUrl}/import/pdf`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(formData).toBeInstanceOf(FormData);
+    expect((formData as FormData).get('file')).toBe(file);
+  });
+
+  it('fetches paper detail by paperId', async () => {
+    const mockResponse: GetPaperDetailResponse = {
+      paper: createPaperSummary(),
+      pdfUrl: '/papers/paper-1/pdf',
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      }),
+    );
+
+    const client = new HttpClient(baseUrl);
+    const result = await client.getPaperDetail({ paperId: 'paper-1' });
+
+    expect(result).toEqual(mockResponse);
+    expect(fetch).toHaveBeenCalledWith(
+      `${baseUrl}/papers/paper-1`,
+      expect.objectContaining({ method: 'GET' }),
     );
   });
 
@@ -581,6 +654,69 @@ describe('use-ipc transport fallback', () => {
 });
 
 describe('ElectronClient', () => {
+  it('loads paper detail through the preload bridge', async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      id: 'paper-1',
+      shortId: '2503.00001',
+      title: 'Test Paper',
+      authors: ['Alice'],
+      pdfPath: '/tmp/paper.pdf',
+      createdAt: '2026-03-17T00:00:00.000Z',
+    });
+
+    stubWindow({
+      invoke,
+      on: vi.fn(() => () => {}),
+      off: vi.fn(),
+      once: vi.fn(),
+      readLocalFile: vi.fn(),
+      windowClose: vi.fn(() => Promise.resolve()),
+      windowMinimize: vi.fn(() => Promise.resolve()),
+      windowMaximize: vi.fn(() => Promise.resolve()),
+      windowIsMaximized: vi.fn(() => Promise.resolve(false)),
+    });
+
+    const client = new ElectronClient();
+    const result = await client.getPaperDetail({ paperId: 'paper-1' });
+
+    expect(invoke).toHaveBeenCalledWith('papers:getById', 'paper-1');
+    expect(result).toEqual({
+      paper: expect.objectContaining({ id: 'paper-1', title: 'Test Paper' }),
+      pdfUrl: '/tmp/paper.pdf',
+    });
+  });
+
+  it('imports local PDF files through the preload bridge', async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      id: 'paper-1',
+      shortId: '2503.00001',
+      title: 'Imported PDF Paper',
+      authors: ['Alice'],
+      createdAt: '2026-03-17T00:00:00.000Z',
+    });
+
+    stubWindow({
+      invoke,
+      on: vi.fn(() => () => {}),
+      off: vi.fn(),
+      once: vi.fn(),
+      readLocalFile: vi.fn(),
+      windowClose: vi.fn(() => Promise.resolve()),
+      windowMinimize: vi.fn(() => Promise.resolve()),
+      windowMaximize: vi.fn(() => Promise.resolve()),
+      windowIsMaximized: vi.fn(() => Promise.resolve(false)),
+    });
+
+    const file = Object.assign(createPdfFile(), { path: '/tmp/paper.pdf' });
+    const client = new ElectronClient();
+    const result = await client.importPdf(file);
+
+    expect(invoke).toHaveBeenCalledWith('papers:importLocalPdf', '/tmp/paper.pdf');
+    expect(result).toEqual({
+      paper: expect.objectContaining({ id: 'paper-1', title: 'Imported PDF Paper' }),
+    });
+  });
+
   it('rejects non-text search modes explicitly', async () => {
     stubWindow({
       invoke: vi.fn(),

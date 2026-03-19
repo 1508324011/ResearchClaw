@@ -1,4 +1,6 @@
 import type {
+  GetPaperDetailRequest,
+  GetPaperDetailResponse,
   GetReadingDetailRequest,
   GetReadingDetailResponse,
   ImportByIdentifierRequest,
@@ -15,7 +17,9 @@ import type {
 
 export interface ResearchClawClient {
   listPapers(request?: ListPapersRequest): Promise<ListPapersResponse>;
+  importPdf(file: File): Promise<ImportPaperResponse>;
   importByIdentifier(request: ImportByIdentifierRequest): Promise<ImportPaperResponse>;
+  getPaperDetail(request: GetPaperDetailRequest): Promise<GetPaperDetailResponse>;
   getReadingDetail(request: GetReadingDetailRequest): Promise<GetReadingDetailResponse>;
   saveReadingNote(request: SaveReadingNoteRequest): Promise<SaveReadingNoteResponse>;
   search(request: SearchRequest): Promise<SearchResponse>;

@@ -1,4 +1,6 @@
 import type {
+  GetPaperDetailRequest,
+  GetPaperDetailResponse,
   GetReadingDetailRequest,
   GetReadingDetailResponse,
   ImportByIdentifierRequest,
@@ -42,7 +44,12 @@ interface ElectronPaperListItem {
   tagNames?: string[];
   sourceUrl?: string;
   createdAt?: string;
+  updatedAt?: string;
+  pdfPath?: string | null;
+  pdfUrl?: string | null;
 }
+
+type FileWithPath = File & { path?: string };
 
 function getElectronAPI() {
   if (typeof window === 'undefined' || !window.electronAPI) {
@@ -78,6 +85,7 @@ function nowIso() {
 
 function toPaperSummary(item: ElectronPaperListItem): PaperSummary {
   const timestamp = item.createdAt ?? nowIso();
+  const updatedAt = item.updatedAt ?? timestamp;
 
   return {
     id: item.id,
@@ -89,8 +97,18 @@ function toPaperSummary(item: ElectronPaperListItem): PaperSummary {
     tagNames: item.tagNames,
     sourceUrl: item.sourceUrl,
     createdAt: timestamp,
-    updatedAt: timestamp,
+    updatedAt,
   };
+}
+
+function getLocalFilePath(file: File): string {
+  const path = (file as FileWithPath).path;
+
+  if (!path) {
+    throw new Error('Electron transport requires a local file path for PDF imports.');
+  }
+
+  return path;
 }
 
 export class ElectronClient implements ResearchClawClient {
@@ -103,8 +121,26 @@ export class ElectronClient implements ResearchClawClient {
     };
   }
 
+  async importPdf(file: File): Promise<ImportPaperResponse> {
+    const item = await invokeElectron<ElectronPaperListItem>(
+      'papers:importLocalPdf',
+      getLocalFilePath(file),
+    );
+
+    return { paper: toPaperSummary(item) };
+  }
+
   async importByIdentifier(request: ImportByIdentifierRequest): Promise<ImportPaperResponse> {
     return invokeElectron<ImportPaperResponse>('papers:importByIdentifier', request);
+  }
+
+  async getPaperDetail(request: GetPaperDetailRequest): Promise<GetPaperDetailResponse> {
+    const item = await invokeElectron<ElectronPaperListItem>('papers:getById', request.paperId);
+
+    return {
+      paper: toPaperSummary(item),
+      pdfUrl: item.pdfUrl ?? item.pdfPath ?? null,
+    };
   }
 
   async getReadingDetail(request: GetReadingDetailRequest): Promise<GetReadingDetailResponse> {

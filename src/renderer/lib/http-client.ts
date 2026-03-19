@@ -1,4 +1,6 @@
 import type {
+  GetPaperDetailRequest,
+  GetPaperDetailResponse,
   GetReadingDetailRequest,
   GetReadingDetailResponse,
   ImportByIdentifierRequest,
@@ -17,7 +19,9 @@ import type { ResearchClawClient } from './researchclaw-client';
 
 const routes = {
   papers: '/papers',
+  paperDetail: (paperId: string) => `/papers/${paperId}`,
   importByIdentifier: '/papers/import',
+  importPdf: '/import/pdf',
   readingDetail: (paperId: string) => `/reading/${paperId}`,
   readingNotes: (paperId: string) => `/reading/${paperId}/notes`,
   search: '/search',
@@ -40,8 +44,19 @@ export class HttpClient implements ResearchClawClient {
     return this.getJson<ListPapersResponse>(`${routes.papers}${query ? `?${query}` : ''}`);
   }
 
+  async importPdf(file: File): Promise<ImportPaperResponse> {
+    const body = new FormData();
+    body.append('file', file);
+
+    return this.postFormData<ImportPaperResponse>(routes.importPdf, body);
+  }
+
   async importByIdentifier(request: ImportByIdentifierRequest): Promise<ImportPaperResponse> {
     return this.postJson<ImportPaperResponse>(routes.importByIdentifier, request);
+  }
+
+  async getPaperDetail(request: GetPaperDetailRequest): Promise<GetPaperDetailResponse> {
+    return this.getJson<GetPaperDetailResponse>(routes.paperDetail(request.paperId));
   }
 
   async getReadingDetail(request: GetReadingDetailRequest): Promise<GetReadingDetailResponse> {
@@ -149,6 +164,15 @@ export class HttpClient implements ResearchClawClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+    });
+
+    return response.json() as Promise<T>;
+  }
+
+  private async postFormData<T>(path: string, body: FormData): Promise<T> {
+    const response = await this.request(path, {
+      method: 'POST',
+      body,
     });
 
     return response.json() as Promise<T>;
