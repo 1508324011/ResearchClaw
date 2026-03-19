@@ -25,6 +25,7 @@ export const GetReadingDetailResponseSchema = z
   .object({
     paper: PaperSummarySchema,
     note: ReadingNoteSchema.nullable(),
+    pdfUrl: z.string().min(1).optional(),
   })
   .strict();
 

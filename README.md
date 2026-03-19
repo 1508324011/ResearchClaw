@@ -28,7 +28,7 @@
 ### Current fork status
 
 - **Desktop app remains available** for the original Electron workflow.
-- **Web runtime is now available for the first browser slice**: library, a browser import workspace (arXiv / DOI / URL / PDF), search, a paper overview page, reader, and notes.
+- **Web runtime is now available for the first browser slice**: library, a browser import workspace (arXiv / DOI / URL / PDF), search, a paper overview page, a server-backed PDF reader, and notes.
 - **Same-origin runtime**: one Node server serves both the browser app and the web APIs.
 - **Docker-first deployment path**: build `dist/web` + `dist/server/index.js`, then run as a single service.
 
@@ -61,7 +61,7 @@ _Organize papers into projects and generate AI-powered research ideas._
 | **Web import**          | Browser-native import workspace for arXiv / DOI / URL identifiers and direct PDF upload                      |
 | **Web overview**        | Browser-native paper overview at `/papers/:paperId` with metadata, abstract, and reader/notes/source actions |
 | **Web search**          | Same-origin text/semantic search via `GET /search`                                                           |
-| **Web reader**          | Browser-native paper summary + latest note preview via `GET /reading/:paperId`                               |
+| **Web reader**          | Browser-native server-backed PDF view + latest note preview via `GET /reading/:paperId`                      |
 | **Web notes**           | Save structured note summaries via `POST /reading/:paperId/notes`                                            |
 | **Job APIs**            | Server-owned job list/status/SSE stream for long-running browser workflows                                   |
 | **Single-user runtime** | Server-first workflow optimized for one researcher and Docker deployment                                     |
@@ -150,7 +150,7 @@ dist/
 
 - The browser app and web APIs share the same origin.
 - `/search` is both a browser route and an API endpoint. HTML navigations are served when the request advertises `Accept: text/html`; JSON/API requests continue to the existing search API.
-- The Phase-1 browser workflow intentionally stays narrow: explicit identifier selection (`arXiv`, `DOI`, `URL`), direct PDF upload, a paper overview stop at `/papers/:paperId`, and then handoff into reader/notes/source actions.
+- The Phase-1 browser workflow intentionally stays narrow: explicit identifier selection (`arXiv`, `DOI`, `URL`), direct PDF upload, a paper overview stop at `/papers/:paperId`, and then handoff into a server-backed reader plus notes/source actions.
 - The current Docker/web runtime is intentionally **reliability-first**: it reuses the existing service graph, including some Electron-adjacent dependencies pulled in through `src/main/services`.
 
 ## License

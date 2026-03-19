@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GetReadingDetailResponse } from '@shared';
 import { getResearchClawClient } from '../../../../renderer/hooks/use-ipc';
+import { buildNoteContentFromDraft, getNoteEditorState } from '../../../lib/reading-note-content';
 
 function requireClient() {
   const client = getResearchClawClient();
@@ -11,16 +12,6 @@ function requireClient() {
   }
 
   return client;
-}
-
-function noteToText(note: GetReadingDetailResponse['note']) {
-  if (!note) {
-    return '';
-  }
-
-  return Object.values(note.content)
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .join('\n\n');
 }
 
 export function NotesPage() {
@@ -33,10 +24,12 @@ export function NotesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorState = useMemo(() => getNoteEditorState(detail?.note), [detail?.note]);
 
   useEffect(() => {
     if (!paperId) {
-      setError('Missing paper id.');
+      setError(t('web.notes.missingPaperId'));
       setLoading(false);
       return;
     }
@@ -50,15 +43,12 @@ export function NotesPage() {
         }
 
         setDetail(response);
-        setDraft(noteToText(response.note));
+        setDraft(getNoteEditorState(response.note).draft);
+        setLoading(false);
       })
       .catch((requestError) => {
         if (!cancelled) {
           setError(requestError instanceof Error ? requestError.message : String(requestError));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
           setLoading(false);
         }
       });
@@ -74,6 +64,17 @@ export function NotesPage() {
       return;
     }
 
+    const submittedDraft = editorRef.current?.value ?? draft;
+
+    let content: GetReadingDetailResponse['note'] extends { content: infer T } ? T : never;
+    try {
+      content = buildNoteContentFromDraft(detail.note, submittedDraft);
+    } catch {
+      setError(t('web.notes.invalidJson'));
+      setSaved(false);
+      return;
+    }
+
     setSaving(true);
     setSaved(false);
     setError(null);
@@ -82,14 +83,15 @@ export function NotesPage() {
       const response = await client.saveReadingNote({
         paperId,
         noteId: detail.note?.id,
-        title: detail.note?.title ?? 'Reading note',
-        content: { Summary: draft },
+        title: detail.note?.title ?? t('web.notes.defaultTitle'),
+        content,
       });
 
       setDetail({
         ...detail,
         note: response.note,
       });
+      setDraft(getNoteEditorState(response.note).draft);
       setSaved(true);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : String(requestError));
@@ -105,7 +107,7 @@ export function NotesPage() {
   if (error || !detail) {
     return (
       <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-        {error ?? 'Notes unavailable.'}
+        {error ?? t('web.notes.unavailable')}
       </p>
     );
   }
@@ -136,8 +138,17 @@ export function NotesPage() {
           <label className="text-sm font-medium text-notion-text" htmlFor="web-notes-editor">
             {t('web.notes.editorLabel')}
           </label>
+          {detail.note && editorState.hasStructuredRemainder ? (
+            <p className="rounded-xl border border-notion-accent/20 bg-notion-accent-light px-3 py-2 text-sm text-notion-text-secondary">
+              {editorState.mode === 'json'
+                ? t('web.notes.jsonHint')
+                : t('web.notes.structuredHint')}
+            </p>
+          ) : null}
           <textarea
             id="web-notes-editor"
+            name="draft"
+            ref={editorRef}
             value={draft}
             onChange={(event) => {
               setDraft(event.target.value);

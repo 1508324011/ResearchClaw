@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GetReadingDetailResponse } from '@shared';
 import { getResearchClawClient } from '../../../../renderer/hooks/use-ipc';
+import { PdfViewer } from '../../../components/pdf-viewer';
+import { getNotePreviewText } from '../../../lib/reading-note-content';
 
 function requireClient() {
   const client = getResearchClawClient();
@@ -11,16 +13,6 @@ function requireClient() {
   }
 
   return client;
-}
-
-function noteToText(note: GetReadingDetailResponse['note']) {
-  if (!note) {
-    return '';
-  }
-
-  return Object.values(note.content)
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .join('\n\n');
 }
 
 export function ReaderPage() {
@@ -33,7 +25,7 @@ export function ReaderPage() {
 
   useEffect(() => {
     if (!paperId) {
-      setError('Missing paper id.');
+      setError(t('web.reader.missingPaperId'));
       setLoading(false);
       return;
     }
@@ -69,7 +61,7 @@ export function ReaderPage() {
   if (error || !detail) {
     return (
       <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-        {error ?? 'Reader unavailable.'}
+        {error ?? t('web.reader.unavailable')}
       </p>
     );
   }
@@ -89,11 +81,13 @@ export function ReaderPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-notion-border bg-notion-sidebar p-5">
-          <h3 className="mb-2 text-sm font-medium text-notion-text">{t('papers.reader')}</h3>
-          <p className="whitespace-pre-wrap text-sm leading-7 text-notion-text-secondary">
-            {detail.paper.abstract ?? t('web.reader.noAbstract')}
-          </p>
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-notion-text">{t('papers.reader')}</h3>
+          <PdfViewer
+            title={t('web.reader.pdfFrame')}
+            pdfUrl={detail.pdfUrl}
+            fallbackText={detail.paper.abstract ?? t('web.reader.noAbstract')}
+          />
         </div>
       </article>
 
@@ -113,7 +107,7 @@ export function ReaderPage() {
 
         {detail.note ? (
           <p className="whitespace-pre-wrap text-sm leading-7 text-notion-text-secondary">
-            {noteToText(detail.note)}
+            {getNotePreviewText(detail.note)}
           </p>
         ) : (
           <p className="text-sm text-notion-text-secondary">{t('web.reader.emptyNote')}</p>

@@ -431,15 +431,24 @@
       "openSource": "打开来源"
     },
     "reader": {
-      "notesSubtitle": "浏览摘要时，右侧始终显示最新笔记。",
+      "pdfFrame": "论文 PDF 查看器",
+      "notesSubtitle": "浏览 PDF 时，右侧始终显示最新笔记。",
+      "missingPaperId": "缺少论文 ID。",
+      "unavailable": "当前无法打开阅读页。",
       "openNotes": "打开笔记",
-      "emptyNote": "还没有阅读笔记，打开笔记页创建第一条摘要。",
+      "emptyNote": "还没有阅读笔记，打开笔记页创建第一条笔记。",
       "noAbstract": "这篇论文暂时还没有摘要。"
     },
     "notes": {
       "title": "阅读笔记",
       "editorLabel": "可编辑笔记",
-      "saveHint": "这里的保存会直接回写到 server-first 阅读接口。"
+      "saveHint": "这里的保存会直接回写到 server-first 阅读接口。",
+      "defaultTitle": "阅读笔记",
+      "missingPaperId": "缺少论文 ID。",
+      "unavailable": "当前无法打开笔记页。",
+      "structuredHint": "这个编辑器只更新主要笔记文本，其他结构化字段会原样保留。",
+      "jsonHint": "这条笔记以结构化 JSON 形式存储，请谨慎编辑以保留原有结构。",
+      "invalidJson": "请先输入合法的 JSON，再保存这条结构化笔记。"
     }
   },
   "tagManagement": {

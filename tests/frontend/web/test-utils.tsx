@@ -29,15 +29,19 @@ export function createPaperSummary(overrides: Partial<PaperSummary> = {}): Paper
 interface MockClientOptions {
   papers?: PaperSummary[];
   searchResults?: PaperSummary[];
-  readingDetail?: GetReadingDetailResponse;
+  readingDetail?: MockReadingDetail;
   importedPaper?: PaperSummary;
 }
+
+type MockReadingDetail = GetReadingDetailResponse & {
+  pdfUrl?: string;
+};
 
 export function createMockClient(options: MockClientOptions = {}) {
   const papers = options.papers ?? [createPaperSummary()];
   const importedPaper =
     options.importedPaper ?? createPaperSummary({ id: 'paper-2', shortId: '2401.01234' });
-  let readingDetail: GetReadingDetailResponse = options.readingDetail ?? {
+  let readingDetail: MockReadingDetail = options.readingDetail ?? {
     paper: papers[0] ?? createPaperSummary(),
     note: {
       id: 'note-1',

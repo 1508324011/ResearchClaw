@@ -431,15 +431,24 @@
       "openSource": "Open source"
     },
     "reader": {
-      "notesSubtitle": "Keep the latest note visible while you skim the paper summary.",
+      "pdfFrame": "Paper PDF viewer",
+      "notesSubtitle": "Keep the latest note visible while you skim the PDF.",
+      "missingPaperId": "Missing paper id.",
+      "unavailable": "Reader unavailable.",
       "openNotes": "Open notes",
-      "emptyNote": "No reading note yet. Open notes to create the first summary.",
+      "emptyNote": "No reading note yet. Open notes to create the first note.",
       "noAbstract": "This paper does not have an abstract yet."
     },
     "notes": {
       "title": "Reading notes",
       "editorLabel": "Editable note",
-      "saveHint": "Notes are saved back through the server-first reading API."
+      "saveHint": "Notes are saved back through the server-first reading API.",
+      "defaultTitle": "Reading note",
+      "missingPaperId": "Missing paper id.",
+      "unavailable": "Notes are unavailable.",
+      "structuredHint": "This editor updates the main note text and preserves the rest of the structured fields.",
+      "jsonHint": "This note is stored as structured JSON. Edit the object carefully to preserve its shape.",
+      "invalidJson": "Enter valid JSON before saving this structured note."
     }
   },
   "tagManagement": {

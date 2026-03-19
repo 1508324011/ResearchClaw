@@ -235,6 +235,7 @@ describe('HttpClient', () => {
     const mockResponse: GetReadingDetailResponse = {
       paper: createPaperSummary(),
       note: null,
+      pdfUrl: '/papers/paper-1/pdf',
     };
 
     vi.stubGlobal(

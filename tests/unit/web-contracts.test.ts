@@ -179,6 +179,7 @@ describe('web contract schemas', () => {
           updatedAt: '2026-03-17T01:00:00.000Z',
         },
         note: null,
+        pdfUrl: '/papers/paper-1/pdf',
       });
 
       expect(result.success).toBe(true);

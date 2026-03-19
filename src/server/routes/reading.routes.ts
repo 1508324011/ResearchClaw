@@ -108,6 +108,10 @@ function mapReadingNote(note: RouteReadingNote): ReadingNote {
   };
 }
 
+function getPaperAssetUrl(paper: RoutePaper): string | undefined {
+  return paper.pdfPath ? `/papers/${paper.id}/pdf` : undefined;
+}
+
 function getLatestPaperNote(
   notes: Awaited<ReturnType<ReadingService['listByPaper']>>,
 ): RouteReadingNote | null {
@@ -156,6 +160,7 @@ export async function handleReadingRoute(
       const response = GetReadingDetailResponseSchema.parse({
         paper: mapPaperSummary(paper),
         note: latestNote ? mapReadingNote(latestNote) : null,
+        pdfUrl: getPaperAssetUrl(paper),
       });
 
       sendJson(res, 200, response);

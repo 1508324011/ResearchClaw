@@ -2,6 +2,32 @@
 
 ## 2026-03-19
 
+### feat: add server-backed browser PDF viewing for reader flow
+
+**Summary**: Completed Task 5 of the Phase-1 web workflow parity plan by upgrading the browser reader to consume a server-backed local PDF asset URL through the existing reading-detail flow, while preserving structured note continuity into the browser notes page.
+
+**Changes**:
+
+1. Extended `src/shared/contracts/reading.ts` plus `src/server/routes/reading.routes.ts` so `GET /reading/:paperId` now returns an optional `pdfUrl` when a stored paper has a local PDF asset, keeping the reader on a single browser-safe request path
+2. Added `src/web/components/pdf-viewer.tsx` and updated `src/web/pages/papers/reader/page.tsx` so the browser reader now renders the server-backed PDF inside a localized iframe when available, while still falling back to abstract/no-abstract copy for metadata-only papers
+3. Expanded browser, integration, and transport coverage in `tests/frontend/web/reader-page.test.tsx`, `tests/integration/web-reading-search.test.ts`, `tests/unit/web-contracts.test.ts`, `tests/unit/http-client.test.ts`, and `tests/frontend/web/test-utils.tsx` so the new `pdfUrl` surface is locked across reader UI, HTTP responses, shared schemas, and client mocks
+4. Updated `README.md` and `README_CN.md` so the documented Phase-1 browser workflow now describes the reader as a server-backed PDF view instead of a summary-only stop
+5. Followed up on Oracle review by adding `src/web/lib/reading-note-content.ts`, preserving structured note fields during browser edits, localizing the remaining reader/notes fallback copy, and removing translation-function identity from reader/notes fetch-effect dependencies so note edits are not clobbered by accidental refetches
+
+**Test validation**:
+
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/reader-page.test.tsx` failed because the browser reader rendered no `web.reader.pdfFrame` iframe yet
+- Verified true RED first: `npm run test -- tests/integration/web-reading-search.test.ts` failed because `GET /reading/:paperId` still returned only `{ paper, note }` without a `pdfUrl`
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/reader-page.test.tsx` passed (`1 passed`)
+- Verified targeted GREEN after implementation: `npm run test -- tests/integration/web-reading-search.test.ts` passed (`5 passed`)
+- Verified shared contract regression coverage after implementation: `npm run test -- tests/unit/web-contracts.test.ts` passed (`21 passed`)
+- Verified HTTP client regression coverage after implementation: `npm run test -- tests/unit/http-client.test.ts` passed (`20 passed`)
+- Verified Oracle follow-up regression coverage: `npm run test:frontend -- tests/frontend/web/reader-page.test.tsx` first failed because the notes flow kept resubmitting the original note content, then passed (`2 passed`) after preserving structured note content and removing unstable `t` dependencies from the reader/notes fetch effects
+- Verified fresh repository lint after final formatting: `npm run lint` passed
+- Verified fresh repository test suite after final formatting: `npm run test` passed (`51 passed`, `1 skipped`; `533 passed`, `48 skipped`)
+- Verified fresh frontend suite after final formatting: `npm run test:frontend` passed (`11 passed`; `118 passed`)
+- Verified fresh production builds after final formatting: `npm run build` passed
+
 ### feat: add browser paper overview route for workflow parity
 
 **Summary**: Completed Task 4 of the Phase-1 web workflow parity plan by inserting a browser-safe paper overview step between library/search entry points and the existing reader/notes flow.

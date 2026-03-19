@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'node:fs';
+import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import '../support/electron-mock';
 import {
@@ -164,6 +165,27 @@ describe('web reading and search routes', () => {
     const detail = GetReadingDetailResponseSchema.parse(await detailResponse.json());
     expect(detail.note?.id).toBe(created.note.id);
     expect(detail.note?.content).toEqual({ summary: 'Updated pass' });
+  });
+
+  it('returns a browser-safe pdfUrl together with reading detail for stored papers', async () => {
+    const papersService = new PapersService();
+    const sourcePdfPath = path.join(TEST_STORAGE_DIR, 'browser-reader.pdf');
+    fs.writeFileSync(sourcePdfPath, '%PDF-1.4 browser reader workflow content');
+
+    const paper = await papersService.importLocalPdf(sourcePdfPath);
+    const { baseUrl } = await startServer();
+    const response = await fetch(`${baseUrl}/reading/${paper.id}`);
+
+    expect(response.status).toBe(200);
+
+    const payload = await response.json();
+    expect(payload).toMatchObject({
+      paper: expect.objectContaining({ id: paper.id }),
+      pdfUrl: `/papers/${paper.id}/pdf`,
+    });
+
+    const parsed = GetReadingDetailResponseSchema.parse(payload);
+    expect(parsed.paper.id).toBe(paper.id);
   });
 
   it('returns text search results using the shared web contract', async () => {
