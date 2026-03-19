@@ -50,11 +50,22 @@ export function SearchPage() {
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-notion-border bg-white p-6 shadow-notion">
-        <div className="mb-4 space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight text-notion-text">
-            {t('web.search.title')}
-          </h2>
-          <p className="text-sm leading-6 text-notion-text-secondary">{t('web.search.subtitle')}</p>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold tracking-tight text-notion-text">
+              {t('web.search.title')}
+            </h2>
+            <p className="text-sm leading-6 text-notion-text-secondary">
+              {t('web.search.subtitle')}
+            </p>
+          </div>
+
+          <Link
+            to="/jobs"
+            className="rounded-lg border border-notion-border px-3 py-2 text-sm text-notion-text-secondary transition-colors hover:border-notion-accent/30 hover:text-notion-accent"
+          >
+            {t('web.search.openJobs')}
+          </Link>
         </div>
 
         <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>

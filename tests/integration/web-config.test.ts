@@ -108,6 +108,20 @@ describe('web docker runtime configuration', () => {
     expect(searchPageResponse.headers.get('content-type')).toContain('text/html');
     await expect(searchPageResponse.text()).resolves.toContain('researchclaw web runtime');
 
+    const jobsPageResponse = await fetch(`${baseUrl}/jobs`, {
+      headers: { accept: 'text/html' },
+    });
+    expect(jobsPageResponse.status).toBe(200);
+    expect(jobsPageResponse.headers.get('content-type')).toContain('text/html');
+    await expect(jobsPageResponse.text()).resolves.toContain('researchclaw web runtime');
+
+    const overviewPageResponse = await fetch(`${baseUrl}/papers/paper-1`, {
+      headers: { accept: 'text/html' },
+    });
+    expect(overviewPageResponse.status).toBe(200);
+    expect(overviewPageResponse.headers.get('content-type')).toContain('text/html');
+    await expect(overviewPageResponse.text()).resolves.toContain('researchclaw web runtime');
+
     const assetResponse = await fetch(`${baseUrl}/assets/app.js`);
     expect(assetResponse.status).toBe(200);
     await expect(assetResponse.text()).resolves.toContain('web asset');

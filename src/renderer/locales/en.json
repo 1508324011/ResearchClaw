@@ -373,17 +373,19 @@
   "web": {
     "shell": {
       "title": "A quieter reading workspace",
-      "subtitle": "Move from import to search, reading, and notes without the desktop shell."
+      "subtitle": "Move from import to search, reading, notes, and job recovery without the desktop shell."
     },
     "nav": {
       "library": "Library",
-      "search": "Search"
+      "search": "Search",
+      "jobs": "Jobs"
     },
     "library": {
       "title": "Library",
       "subtitle": "Your recent papers stay visible, searchable, and ready to open in the browser flow.",
       "empty": "No papers yet. Import an identifier or upload a PDF to start the browser-native workflow.",
       "localPaper": "Local paper",
+      "openJobs": "Recover jobs",
       "importTitle": "Import into web workspace",
       "importHint": "Paste an arXiv identifier or URL. The server stores the paper and opens it directly in the browser reader.",
       "importLabel": "arXiv identifier",
@@ -418,7 +420,17 @@
       "title": "Search papers",
       "subtitle": "Run the same server-first search contract the browser client will use in production.",
       "queryLabel": "Search query",
-      "searchAction": "Search library"
+      "searchAction": "Search library",
+      "openJobs": "Open job recovery"
+    },
+    "jobs": {
+      "title": "Job recovery",
+      "subtitle": "Recover in-flight browser work from the server snapshot and keep watching progress without reopening the desktop shell.",
+      "empty": "No active or recent jobs yet. Start from the library or search workflow and return here to recover progress.",
+      "progressLabel": "Progress",
+      "updatedLabel": "Updated",
+      "backLibrary": "Back to library",
+      "backSearch": "Back to search"
     },
     "paperOverview": {
       "back": "Back",

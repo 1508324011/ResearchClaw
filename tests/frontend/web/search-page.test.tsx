@@ -40,6 +40,8 @@ describe('web search page', () => {
     const user = userEvent.setup();
     render(<RouterProvider router={router} />);
 
+    expect(screen.getByRole('link', { name: 'web.search.openJobs' })).toBeInTheDocument();
+
     await user.type(screen.getByLabelText('web.search.queryLabel'), 'transformer');
     await user.click(screen.getByRole('button', { name: 'web.search.searchAction' }));
 

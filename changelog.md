@@ -2,6 +2,32 @@
 
 ## 2026-03-19
 
+### feat: add browser job recovery page for workflow parity
+
+**Summary**: Completed Task 6 of the Phase-1 web workflow parity plan by adding a browser jobs page that recovers server-owned job snapshots, keeps progress visible through per-job SSE subscriptions, and exposes recovery entry points from the existing library/search flow.
+
+**Changes**:
+
+1. Added `src/web/pages/jobs/page.tsx` and wired `src/web/router.tsx` so `/jobs` now exists as a browser-native recovery surface with current job cards, state/progress/message visibility, and lightweight links back to library/search workflows
+2. Reused the existing `listJobStatus()` plus per-job SSE subscription surface instead of extending the transport layer, so the browser page now recovers running/queued jobs from `/jobs` and keeps them fresh via `subscribeJobEvents(jobId, ...)`
+3. Updated `src/web/pages/library/page.tsx`, `src/web/pages/search/page.tsx`, and `src/renderer/locales/en.json` / `zh.json` so the web shell, library page, and search page all expose browser recovery entry points with synchronized English/Chinese copy
+4. Added/expanded Task 6 coverage in `tests/frontend/web/jobs-page.test.tsx`, `tests/frontend/web/library-page.test.tsx`, `tests/frontend/web/search-page.test.tsx`, and `tests/integration/web-job-stream.test.ts` so route recovery, progress updates, refresh recovery, and the new page-level entry points are locked before final Phase-1 verification
+
+**Test validation**:
+
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/jobs-page.test.tsx` failed because `/jobs` did not exist yet and React Router returned `404 Not Found`
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx` failed because the library page exposed no `web.library.openJobs` recovery link
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/search-page.test.tsx` failed because the search page exposed no `web.search.openJobs` recovery link
+- Verified existing server transport before UI wiring: `npm run test -- tests/integration/web-job-stream.test.ts` already passed (`4 passed`), confirming Task 6 could reuse the existing `/jobs` + SSE surface instead of adding a new backend contract
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/jobs-page.test.tsx` passed (`1 passed`)
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx` passed (`2 passed`)
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/search-page.test.tsx` passed (`1 passed`)
+- Verified job-stream regression coverage after implementation: `npm run test -- tests/integration/web-job-stream.test.ts` passed (`4 passed`)
+- Verified fresh repository lint after final formatting: `npm run lint` passed
+- Verified fresh repository test suite after final formatting: `npm run test` passed (`51 passed`, `1 skipped`; `534 passed`, `48 skipped`)
+- Verified fresh frontend suite after final formatting: `npm run test:frontend` passed (`12 passed`; `119 passed`)
+- Verified fresh production builds after final formatting: `npm run build` passed
+
 ### feat: add server-backed browser PDF viewing for reader flow
 
 **Summary**: Completed Task 5 of the Phase-1 web workflow parity plan by upgrading the browser reader to consume a server-backed local PDF asset URL through the existing reading-detail flow, while preserving structured note continuity into the browser notes page.

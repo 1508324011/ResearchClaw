@@ -239,4 +239,48 @@ describe('web job routes', () => {
 
     expect(events).toEqual([{ type: 'snapshot', job: targetJob }, doneEvent]);
   });
+
+  it('supports job recovery by listing current jobs before later stream updates arrive', async () => {
+    const recoverableJob = createJob({
+      jobId: 'job-running',
+      kind: 'analysis',
+      state: 'running',
+      progress: 45,
+      updatedAt: '2026-03-17T12:00:00.000Z',
+    });
+
+    jobBus.publish({ type: 'snapshot', job: recoverableJob });
+
+    const { baseUrl } = await startServer();
+
+    const listResponse = await fetch(`${baseUrl}/jobs`);
+    expect(listResponse.status).toBe(200);
+    const listed = (await listResponse.json()) as unknown[];
+    expect(listed).toEqual([recoverableJob]);
+
+    const controller = new AbortController();
+    const response = await fetch(`${baseUrl}/jobs/job-running/stream`, {
+      headers: { accept: 'text/event-stream' },
+      signal: controller.signal,
+    });
+
+    expect(response.status).toBe(200);
+
+    const progressEvent: JobStreamEvent = {
+      type: 'progress',
+      job: createJob({
+        jobId: 'job-running',
+        kind: 'analysis',
+        state: 'running',
+        progress: 80,
+        updatedAt: '2026-03-17T12:05:00.000Z',
+      }),
+    };
+
+    const eventsPromise = readSseEvents(response, 2, () => controller.abort());
+    jobBus.publish(progressEvent);
+    const events = await eventsPromise;
+
+    expect(events).toEqual([{ type: 'snapshot', job: recoverableJob }, progressEvent]);
+  });
 });

@@ -8,6 +8,8 @@ const HTML_CONTENT_TYPE = 'text/html; charset=utf-8';
 const SPA_ROUTE_PATTERNS = [
   /^\/$/,
   /^\/search$/,
+  /^\/jobs$/,
+  /^\/papers\/[^/]+$/,
   /^\/papers\/[^/]+\/reader$/,
   /^\/papers\/[^/]+\/notes$/,
 ];

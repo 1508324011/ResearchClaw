@@ -373,17 +373,19 @@
   "web": {
     "shell": {
       "title": "更安静的阅读工作台",
-      "subtitle": "不依赖桌面外壳，直接在浏览器里完成导入、搜索、阅读和笔记。"
+      "subtitle": "不依赖桌面外壳，直接在浏览器里完成导入、搜索、阅读、笔记和任务恢复。"
     },
     "nav": {
       "library": "文献库",
-      "search": "搜索"
+      "search": "搜索",
+      "jobs": "任务"
     },
     "library": {
       "title": "文献库",
       "subtitle": "最近导入的论文会直接出现在这里，并可继续在浏览器流程中打开。",
       "empty": "还没有论文。先导入一个标识符或上传 PDF，启动浏览器原生流程。",
       "localPaper": "本地论文",
+      "openJobs": "恢复任务",
       "importTitle": "导入到 Web 工作区",
       "importHint": "粘贴 arXiv 编号或 URL。服务器会保存论文，并直接在浏览器阅读页中打开。",
       "importLabel": "arXiv 编号",
@@ -418,7 +420,17 @@
       "title": "搜索论文",
       "subtitle": "直接调用生产环境会用到的 server-first 搜索接口。",
       "queryLabel": "搜索词",
-      "searchAction": "搜索文献库"
+      "searchAction": "搜索文献库",
+      "openJobs": "打开任务恢复页"
+    },
+    "jobs": {
+      "title": "任务恢复",
+      "subtitle": "先从服务器快照恢复当前任务，再在浏览器里继续观察进度，无需回到桌面外壳。",
+      "empty": "还没有活动或最近的任务。可以先从文献库或搜索流程发起操作，再回到这里恢复进度。",
+      "progressLabel": "进度",
+      "updatedLabel": "更新时间",
+      "backLibrary": "返回文献库",
+      "backSearch": "返回搜索"
     },
     "paperOverview": {
       "back": "返回",

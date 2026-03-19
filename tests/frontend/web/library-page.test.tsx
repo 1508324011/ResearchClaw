@@ -34,6 +34,7 @@ describe('web library page', () => {
     render(<RouterProvider router={router} />);
 
     expect(await screen.findByText('Graph Foundations')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'web.library.openJobs' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'web.library.openOverview' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'web.library.openReader' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'web.library.openNotes' })).not.toBeInTheDocument();

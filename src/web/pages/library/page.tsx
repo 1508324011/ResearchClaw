@@ -66,18 +66,27 @@ export function LibraryPage() {
     <section className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="rounded-2xl border border-notion-border bg-white p-6 shadow-notion">
-          <div className="mb-5 space-y-1">
-            <h2 className="text-2xl font-bold tracking-tight text-notion-text">
-              {t('web.library.title')}
-            </h2>
-            <p className="text-sm leading-6 text-notion-text-secondary">
-              {t('web.library.subtitle')}
-            </p>
-            {loadError ? (
-              <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-                {loadError}
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold tracking-tight text-notion-text">
+                {t('web.library.title')}
+              </h2>
+              <p className="text-sm leading-6 text-notion-text-secondary">
+                {t('web.library.subtitle')}
               </p>
-            ) : null}
+              {loadError ? (
+                <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                  {loadError}
+                </p>
+              ) : null}
+            </div>
+
+            <Link
+              to="/jobs"
+              className="rounded-lg border border-notion-border px-3 py-2 text-sm text-notion-text-secondary transition-colors hover:border-notion-accent/30 hover:text-notion-accent"
+            >
+              {t('web.library.openJobs')}
+            </Link>
           </div>
 
           {loading ? (
