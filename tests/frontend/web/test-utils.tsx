@@ -1,4 +1,5 @@
 import type {
+  ExternalPaperSearchResponse,
   GetPaperDetailResponse,
   GetReadingDetailResponse,
   ImportPaperResponse,
@@ -128,6 +129,20 @@ export function createMockClient(options: MockClientOptions = {}) {
     total: searchResults.length,
   } satisfies SearchResponse);
 
+  const searchExternal = vi.fn<ResearchClawClient['searchExternal']>().mockResolvedValue({
+    results: searchResults.map((paper) => ({
+      paperId: paper.id,
+      title: paper.title,
+      authors: paper.authors.map((name) => ({ name })),
+      year: paper.year ?? null,
+      abstract: paper.abstract ?? null,
+      citationCount: 0,
+      externalIds: paper.shortId ? { ArXiv: paper.shortId } : {},
+      url: paper.sourceUrl ?? null,
+    })),
+    total: searchResults.length,
+  } satisfies ExternalPaperSearchResponse);
+
   const listJobStatus = vi
     .fn<ResearchClawClient['listJobStatus']>()
     .mockResolvedValue([] satisfies JobStatus[]);
@@ -146,6 +161,7 @@ export function createMockClient(options: MockClientOptions = {}) {
     getReadingDetail,
     saveReadingNote,
     search,
+    searchExternal,
     listJobStatus,
     subscribeJobEvents,
   };
@@ -160,6 +176,7 @@ export function createMockClient(options: MockClientOptions = {}) {
       getReadingDetail,
       saveReadingNote,
       search,
+      searchExternal,
       listJobStatus,
       subscribeJobEvents,
     },

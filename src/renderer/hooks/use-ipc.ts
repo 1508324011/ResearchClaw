@@ -213,12 +213,10 @@ async function invokeThroughFallback<T>(channel: string, ...args: unknown[]): Pr
     case 'reading:saveNote':
       return client.saveReadingNote(args[0] as SaveReadingNoteRequest) as Promise<T>;
     case 'papers:search': {
-      const response = await client.search({
+      return client.searchExternal({
         query: args[0] as string,
         limit: args[1] as number | undefined,
-        mode: 'text',
       });
-      return toLegacySearchResponse(response) as T;
     }
     case 'papers:semanticSearch': {
       const response = await client.search({

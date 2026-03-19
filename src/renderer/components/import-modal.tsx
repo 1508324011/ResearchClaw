@@ -235,7 +235,14 @@ export function ImportModal({
     setIsSearching(true);
     setSearchError('');
     try {
-      const result = await ipc.searchPapers(query, 20);
+      const result = isBrowserHost
+        ? await getResearchClawClient()?.searchExternal({ query, limit: 20 })
+        : await ipc.searchPapers(query, 20);
+
+      if (!result) {
+        throw new Error('Browser import search is unavailable.');
+      }
+
       setSearchResults(result.results);
       setSelectedSearchIds(new Set());
     } catch (err) {
@@ -475,6 +482,7 @@ export function ImportModal({
 
           let success = 0;
           let failed = 0;
+          let firstError: string | null = null;
 
           for (const pdfFile of browserPdfFiles) {
             try {
@@ -483,11 +491,16 @@ export function ImportModal({
             } catch (importError) {
               console.error('Failed to import PDF:', pdfFile.name, importError);
               failed++;
+              if (!firstError) {
+                const message =
+                  importError instanceof Error ? importError.message : 'Import failed';
+                firstError = `${pdfFile.name}: ${message}`;
+              }
             }
           }
 
           if (success === 0) {
-            throw new Error('Failed to import selected PDF files.');
+            throw new Error(firstError ?? 'Failed to import selected PDF files.');
           }
 
           onImported();

@@ -20,6 +20,37 @@ afterEach(() => {
 });
 
 describe('browser import modal', () => {
+  it('uses external browser search for import discovery', async () => {
+    window.electronAPI = undefined;
+
+    const remotePaper = createPaperSummary({
+      id: 'paper-33',
+      shortId: '2503.00033',
+      title: 'External Import Result',
+      abstract: 'Fetched from the external import search path.',
+    });
+    const { client, spies } = createMockClient({ searchResults: [remotePaper] });
+    setResearchClawClient(client);
+
+    const user = userEvent.setup();
+    render(<ImportModal onClose={vi.fn()} onImported={vi.fn()} />);
+
+    await user.type(
+      screen.getByPlaceholderText('e.g., attention is all you need'),
+      'external discovery',
+    );
+
+    await waitFor(() => {
+      expect(spies.searchExternal).toHaveBeenCalledWith({
+        query: 'external discovery',
+        limit: 20,
+      });
+    });
+
+    expect(await screen.findByText('External Import Result')).toBeInTheDocument();
+    expect(spies.search).not.toHaveBeenCalled();
+  });
+
   it('uploads PDF files through the browser host without Electron file dialogs', async () => {
     window.electronAPI = undefined;
 
@@ -54,5 +85,34 @@ describe('browser import modal', () => {
 
     expect(await screen.findByText('Import complete')).toBeInTheDocument();
     expect(screen.getByText(/1 PDF imported successfully/i)).toBeInTheDocument();
+  });
+
+  it('surfaces the first browser upload failure reason', async () => {
+    window.electronAPI = undefined;
+
+    const { client, spies } = createMockClient();
+    spies.importPdf.mockRejectedValueOnce(
+      new Error('HTTP 413: Request body exceeds the 25 MB upload limit.'),
+    );
+    setResearchClawClient(client);
+
+    const onImported = vi.fn();
+    const user = userEvent.setup();
+    const pdfFile = new File(['%PDF-1.4 too big'], 'too-big.pdf', {
+      type: 'application/pdf',
+    });
+
+    render(<ImportModal onClose={vi.fn()} onImported={onImported} />);
+
+    await user.click(screen.getByRole('button', { name: 'Local' }));
+    await user.upload(screen.getByLabelText('Choose PDF files'), pdfFile);
+    await user.click(screen.getByRole('button', { name: 'Import' }));
+
+    expect(
+      await screen.findByText(
+        'too-big.pdf: HTTP 413: Request body exceeds the 25 MB upload limit.',
+      ),
+    ).toBeInTheDocument();
+    expect(onImported).not.toHaveBeenCalled();
   });
 });
