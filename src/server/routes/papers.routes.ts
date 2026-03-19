@@ -9,8 +9,7 @@ import {
 import { ZodError } from 'zod';
 import { PapersService } from '../../main/services/papers.service';
 import { WebImportError, WebImportService } from '../services/web-import.service';
-
-const MAX_PAPERS_BODY_BYTES = 2 * 1024 * 1024;
+import { getWebImportBodyLimitMessage, WEB_IMPORT_BODY_LIMIT_BYTES } from './web-import-body-limit';
 
 type RoutePaper = NonNullable<Awaited<ReturnType<PapersService['getById']>>>;
 
@@ -83,8 +82,8 @@ async function readBody(req: http.IncomingMessage): Promise<Buffer> {
   for await (const chunk of req) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     totalBytes += buffer.byteLength;
-    if (totalBytes > MAX_PAPERS_BODY_BYTES) {
-      throw new WebImportError(413, 'Request body exceeds the 2 MB upload limit.');
+    if (totalBytes > WEB_IMPORT_BODY_LIMIT_BYTES) {
+      throw new WebImportError(413, getWebImportBodyLimitMessage());
     }
     chunks.push(buffer);
   }
