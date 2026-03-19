@@ -1,6 +1,32 @@
 # Changelog
 
+## 2026-03-19
+
+### docs: define the staged web workflow parity plan and test gate
+
+**Summary**: Added the next-stage planning documents that freeze web development around workflow parity, define the first executable milestone, and introduce a release-gate manual test runbook for the web effort.
+
+**Changes**:
+
+1. Added `docs/plans/2026-03-19-web-workflow-parity-design.md` to freeze the approved parity contract as workflow parity instead of full UI cloning, while locking the product boundary to same-origin, single-user, server-first, and Docker-first
+2. Added `docs/plans/2026-03-19-web-core-workflow-parity-implementation.md` to break the next milestone into exact Phase-1 implementation tasks for contracts, routes, browser pages, job recovery, and verification
+3. Added `docs/plans/2026-03-19-web-workflow-parity-test-runbook.md` to define the manual release-gate checklist, case IDs, evidence policy, and automation mapping for the Phase-1 browser workflow
+
+**Test validation**:
+
+- Verified the three new planning documents exist under `docs/plans/`
+- Verified repository checks after the documentation update with `npm run lint`, `npm run test`, `npm run test:frontend`, and `npm run build`
+
 ## 2026-03-18
+
+### docs: add a web runtime progress summary document
+
+**Summary**: Added a standalone progress summary document for the current server-first web runtime branch so the latest implementation, verification, commit, and push state can be reviewed without reconstructing the full changelog thread.
+
+**Changes**:
+
+1. Added `docs/plans/2026-03-18-web-runtime-progress-summary.md` with the current branch status, delivered milestones, verification evidence, commit history, and remaining caveats
+2. Consolidated the final browser-facing runtime readiness snapshot into one document instead of spreading it across multiple changelog entries and terminal notes
 
 ### fix: initialize the web runtime database before db-backed routes run
 
