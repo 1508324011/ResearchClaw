@@ -2,6 +2,23 @@
 
 ## 2026-03-19
 
+### feat: add browser-safe web paper detail and identifier import routes
+
+**Summary**: Completed Task 2 of the Phase-1 web workflow parity plan by adding browser-safe paper detail and PDF asset routes, while broadening the server-owned identifier import path beyond the original arXiv-only slice.
+
+**Changes**:
+
+1. Extended `src/server/routes/papers.routes.ts` with `GET /papers/:paperId` and `GET /papers/:paperId/pdf` so the browser runtime can resolve a paper detail payload and stream a locally stored PDF asset from server-owned storage
+2. Expanded `src/server/services/web-import.service.ts` so `importByIdentifier()` now supports `doi` and `url` browser-safe inputs in addition to arXiv, while still reusing the existing local PDF and arXiv download flows where possible
+3. Added integration coverage in `tests/integration/web-paper-detail.test.ts` and updated `tests/integration/web-import.test.ts` so the new detail route, PDF asset route, and DOI import behavior are locked before any Phase-1 UI work builds on them
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/integration/web-paper-detail.test.ts` failed because `/papers/:id` and `/papers/:id/pdf` still returned `404`
+- Verified true RED first: `npm run test -- tests/integration/web-import.test.ts` failed because DOI imports still returned `400`
+- Verified targeted GREEN after implementation: `npm run test -- tests/integration/web-paper-detail.test.ts` passed (`2 passed`)
+- Verified targeted GREEN after implementation: `npm run test -- tests/integration/web-import.test.ts` passed (`5 passed`)
+
 ### refactor: freeze the phase-1 web parity contract and client surface
 
 **Summary**: Completed Task 1 of the web workflow parity plan by locking the new paper-detail and PDF-import client surface into the shared contracts plus both browser and Electron transports before any server-route or UI expansion.
