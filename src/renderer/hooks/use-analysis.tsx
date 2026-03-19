@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { getResearchClawHost } from '../host/electron-host';
 import { ipc, onIpc, type AnalysisJobStatus } from './use-ipc';
 import { useMainReady } from './use-main-ready';
 
@@ -48,7 +49,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
 
     void refreshJobs();
 
-    if (!window.electronAPI?.on) return;
+    if (!getResearchClawHost().supportsNativeEvents) return;
 
     return onIpc('analysis:status', (_event, payload) => {
       const job = payload as AnalysisJobStatus;

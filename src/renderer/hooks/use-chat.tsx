@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { getResearchClawHost } from '../host/electron-host';
 import { ipc, onIpc, type ChatJobStatus } from './use-ipc';
 import { useMainReady } from './use-main-ready';
 
@@ -53,7 +54,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     void refreshJobs();
 
-    if (!window.electronAPI?.on) return;
+    if (!getResearchClawHost().supportsNativeEvents) return;
 
     return onIpc('chat:status', (_event, payload) => {
       const job = payload as ChatJobStatus;

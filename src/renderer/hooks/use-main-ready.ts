@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getResearchClawHost } from '../host/electron-host';
 
 /**
  * Hook to check if the main process is ready to handle IPC calls.
@@ -8,28 +9,30 @@ export function useMainReady(): boolean {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!window.electronAPI?.on) {
-      // If electronAPI is not available, we're probably not in Electron
-      // (e.g., during SSR or testing). Assume ready.
+    const host = getResearchClawHost();
+    if (host.kind !== 'electron') {
       setIsReady(true);
       return;
     }
 
-    // Listen for main:ready event
-    const unsubscribe = window.electronAPI.on('main:ready', () => {
-      setIsReady(true);
+    let isDisposed = false;
+
+    const unsubscribe = host.on('main:ready', () => {
+      if (!isDisposed) {
+        setIsReady(true);
+      }
     });
 
-    // Also check if already ready (in case we missed the event)
-    // by trying a simple IPC call
-    window.electronAPI
-      .invoke('ping')
-      .then(() => setIsReady(true))
-      .catch(() => {
-        // Not ready yet, wait for the event
-      });
+    void host.isMainReady().then((ready) => {
+      if (!isDisposed && ready) {
+        setIsReady(true);
+      }
+    });
 
-    return unsubscribe;
+    return () => {
+      isDisposed = true;
+      unsubscribe();
+    };
   }, []);
 
   return isReady;
