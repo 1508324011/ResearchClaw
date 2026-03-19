@@ -86,11 +86,18 @@ export async function searchPapers(query: string, limit: number = 20): Promise<S
       const results: SearchResult[] = (json?.data ?? []).map((item: any) => ({
         paperId: item.paperId,
         title: item.title ?? 'Untitled',
-        authors: item.authors ?? [],
+        authors: Array.isArray(item.authors)
+          ? item.authors
+              .map((author: any) => ({ name: author?.name }))
+              .filter((author: { name?: string }) => typeof author.name === 'string' && author.name)
+          : [],
         year: item.year ?? null,
         abstract: item.abstract ?? null,
         citationCount: item.citationCount ?? 0,
-        externalIds: item.externalIds ?? {},
+        externalIds: {
+          ...(typeof item.externalIds?.ArXiv === 'string' ? { ArXiv: item.externalIds.ArXiv } : {}),
+          ...(typeof item.externalIds?.DOI === 'string' ? { DOI: item.externalIds.DOI } : {}),
+        },
         url: item.url ?? null,
       }));
 
