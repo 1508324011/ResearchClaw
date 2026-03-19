@@ -21,6 +21,18 @@ export interface CreatePaperInput {
   pdfPath?: string;
 }
 
+export interface CreatePaperWithLocalPdfInput {
+  title: string;
+  source: 'chrome' | 'manual' | 'arxiv';
+  sourceUrl?: string;
+  tags?: string[];
+  authors?: string[];
+  submittedAt?: Date;
+  year?: number;
+  abstract?: string;
+  pdfBuffer: Buffer;
+}
+
 export class PapersService {
   private papersRepository = new PapersRepository();
   private eventsRepository = new SourceEventsRepository();
@@ -78,6 +90,41 @@ export class PapersService {
     if (input.pdfPath || input.pdfUrl || input.source === 'arxiv') {
       schedulePaperProcessing(created.id);
     }
+    scheduleCitationExtraction(created.id);
+    scheduleAutoPaperEnrichment(created.id);
+
+    return created;
+  }
+
+  async createWithLocalPdf(input: CreatePaperWithLocalPdfInput) {
+    const shortId = await this.generateShortId(input.sourceUrl);
+    const folder = await this.ensurePaperFolder(shortId);
+    const importedPdfPath = path.join(folder, 'paper.pdf');
+    await fs.writeFile(importedPdfPath, input.pdfBuffer);
+
+    const submittedAt =
+      input.submittedAt ?? (input.year ? new Date(`${input.year}-01-01T00:00:00Z`) : undefined);
+
+    const created = await this.papersRepository.create({
+      shortId,
+      title: input.title,
+      authors: input.authors ?? [],
+      source: input.source,
+      sourceUrl: input.sourceUrl,
+      submittedAt,
+      abstract: input.abstract,
+      pdfPath: importedPdfPath,
+      tags: input.tags ?? [],
+    });
+
+    await this.eventsRepository.create({
+      paperId: created.id,
+      source: input.source,
+      rawTitle: input.title,
+      rawUrl: input.sourceUrl,
+    });
+
+    schedulePaperProcessing(created.id);
     scheduleCitationExtraction(created.id);
     scheduleAutoPaperEnrichment(created.id);
 

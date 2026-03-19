@@ -18,6 +18,35 @@ interface ArxivMetadata {
   sourceUrl: string;
 }
 
+interface DoiMetadata {
+  title?: string;
+  authors: string[];
+  abstract?: string;
+  pdfUrl?: string;
+  sourceUrl: string;
+  submittedAt?: Date;
+}
+
+async function fetchPdfBuffer(pdfUrl: string): Promise<Buffer> {
+  const response = await fetch(pdfUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible: ResearchClaw Web Import/1.0)',
+      Accept: 'application/pdf',
+    },
+  });
+
+  if (!response.ok) {
+    throw new WebImportError(502, `Failed to fetch DOI PDF: ${response.status}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length < 5 || buffer.toString('ascii', 0, 5) !== '%PDF-') {
+    throw new WebImportError(502, 'DOI document did not resolve to a valid PDF.');
+  }
+
+  return buffer;
+}
+
 export class WebImportError extends Error {
   constructor(
     readonly statusCode: number,
@@ -72,6 +101,116 @@ function normalizeUrl(value: string): string {
   } catch {
     throw new WebImportError(400, 'Invalid URL identifier.');
   }
+}
+
+function extractMetaTagValues(html: string, name: string): string[] {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(
+    `<meta[^>]+name=["']${escapedName}["'][^>]+content=["']([^"']+)["']`,
+    'gi',
+  );
+
+  return Array.from(html.matchAll(pattern), (match) => match[1].trim()).filter(Boolean);
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'");
+}
+
+function stripMarkup(value: string): string {
+  return decodeHtmlEntities(value)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseIssuedDate(value: unknown): Date | undefined {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('date-parts' in value) ||
+    !Array.isArray(value['date-parts']) ||
+    !Array.isArray(value['date-parts'][0])
+  ) {
+    return undefined;
+  }
+
+  const [year, month = 1, day = 1] = value['date-parts'][0];
+  if (typeof year !== 'number') {
+    return undefined;
+  }
+
+  const parsed = new Date(Date.UTC(year, Math.max(month - 1, 0), Math.max(day, 1)));
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+async function fetchDoiMetadata(doi: string): Promise<DoiMetadata> {
+  const sourceUrl = `https://doi.org/${doi}`;
+  const requestHeaders = {
+    'User-Agent': 'Mozilla/5.0 (compatible: ResearchClaw Web Import/1.0)',
+  };
+
+  const htmlResponse = await fetch(sourceUrl, {
+    headers: {
+      ...requestHeaders,
+      Accept: 'text/html,application/xhtml+xml',
+    },
+  });
+
+  if (!htmlResponse.ok) {
+    throw new WebImportError(502, `Failed to resolve DOI landing page: ${htmlResponse.status}`);
+  }
+
+  const html = await htmlResponse.text();
+  const htmlTitle = extractMetaTagValues(html, 'citation_title')[0]?.trim();
+  const htmlAuthors = extractMetaTagValues(html, 'citation_author');
+  const htmlAbstract = extractMetaTagValues(html, 'citation_abstract')[0];
+  const htmlPdfUrl = extractMetaTagValues(html, 'citation_pdf_url')[0];
+  const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+
+  const cslResponse = await fetch(sourceUrl, {
+    headers: {
+      ...requestHeaders,
+      Accept: 'application/vnd.citationstyles.csl+json',
+    },
+  });
+
+  if (!cslResponse.ok) {
+    throw new WebImportError(502, `Failed to fetch DOI metadata: ${cslResponse.status}`);
+  }
+
+  const cslPayload = (await cslResponse.json()) as {
+    title?: string;
+    author?: Array<{ given?: string; family?: string; literal?: string }>;
+    abstract?: string;
+    issued?: { 'date-parts'?: number[][] };
+  };
+
+  const cslAuthors =
+    cslPayload.author
+      ?.map((author) => {
+        if (author.literal?.trim()) {
+          return author.literal.trim();
+        }
+
+        return [author.given?.trim(), author.family?.trim()].filter(Boolean).join(' ').trim();
+      })
+      .filter(Boolean) ?? [];
+
+  return {
+    sourceUrl,
+    title: htmlTitle || cslPayload.title?.trim() || titleTagMatch?.[1]?.trim() || undefined,
+    authors: htmlAuthors.length > 0 ? htmlAuthors : cslAuthors,
+    abstract: htmlAbstract ? stripMarkup(htmlAbstract) : stripMarkup(cslPayload.abstract ?? ''),
+    pdfUrl: htmlPdfUrl,
+    submittedAt: parseIssuedDate(cslPayload.issued),
+  };
 }
 
 function titleFromUrl(value: string): string {
@@ -178,11 +317,30 @@ export class WebImportService {
     const request = parsedRequest.data;
     if (request.kind === 'doi') {
       const doi = normalizeDoi(request.value);
-      return this.createManualIdentifierImport({
-        title: doi,
-        sourceUrl: `https://doi.org/${doi}`,
-        tags: ['doi'],
-      });
+      const metadata = await fetchDoiMetadata(doi);
+
+      if (!metadata.title || !metadata.abstract || !metadata.pdfUrl) {
+        throw new WebImportError(422, 'Unable to import DOI as a complete paper.');
+      }
+
+      try {
+        const pdfBuffer = await fetchPdfBuffer(metadata.pdfUrl);
+        const createdPaper = await this.papersService.createWithLocalPdf({
+          title: metadata.title,
+          source: 'manual',
+          sourceUrl: metadata.sourceUrl,
+          tags: ['doi'],
+          authors: metadata.authors,
+          abstract: metadata.abstract,
+          submittedAt: metadata.submittedAt,
+          pdfBuffer,
+        });
+
+        const storedPaper = await this.papersService.getById(createdPaper.id);
+        return this.finalizeImportResponse(storedPaper ?? createdPaper);
+      } catch {
+        throw new WebImportError(422, 'Unable to import DOI as a complete paper.');
+      }
     }
 
     if (request.kind === 'url') {
