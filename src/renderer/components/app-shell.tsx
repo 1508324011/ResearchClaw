@@ -40,6 +40,7 @@ import {
   markSetupDismissed,
   clearSetupDismissed,
 } from './setup-wizard-modal';
+import { getResearchClawHost } from '../host/electron-host';
 
 // Detect if running on Windows
 const isWindows = navigator.userAgent.includes('Windows');
@@ -65,6 +66,11 @@ function WindowsWindowControls() {
   const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
   const isMainReady = useMainReady();
+  const host = getResearchClawHost();
+
+  if (!host.supportsWindowControls) {
+    return null;
+  }
 
   useEffect(() => {
     if (!isMainReady) return;
@@ -203,6 +209,7 @@ export function AppShell({
   fullWidth?: boolean;
 }) {
   const { t } = useTranslation();
+  const host = getResearchClawHost();
   const location = useLocation();
   const navigate = useNavigate();
   const pathname = location.pathname;
@@ -350,7 +357,7 @@ export function AppShell({
   }, [activeId, tabs]);
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden">
+    <div data-testid="app-shell-root" className="flex h-screen w-screen flex-col overflow-hidden">
       {/* Top title bar - spans full width */}
       <header
         className="flex flex-shrink-0 items-stretch border-b border-notion-border bg-notion-sidebar"
@@ -418,7 +425,7 @@ export function AppShell({
         </div>
 
         {/* Windows window controls - right side */}
-        {isWindows && <WindowsWindowControls />}
+        {isWindows && host.supportsWindowControls && <WindowsWindowControls />}
       </header>
 
       {/* Main content area: sidebar + content */}
@@ -426,6 +433,7 @@ export function AppShell({
         {/* Sidebar */}
         <aside
           ref={sidebarRef}
+          aria-label="app-shell-sidebar"
           className={`flex flex-shrink-0 flex-col border-r border-notion-border bg-notion-sidebar transition-[width] duration-150 ease-out ${
             isCollapsed ? 'w-[72px] overflow-hidden' : 'w-60 notion-scrollbar overflow-y-auto'
           }`}
@@ -462,7 +470,7 @@ export function AppShell({
           </div>
 
           {/* Primary navigation */}
-          <nav className="mt-2 flex flex-col gap-0.5 px-2">
+          <nav aria-label="app-sidebar" className="mt-2 flex flex-col gap-0.5 px-2">
             {[
               ...primaryNavRoutes,
               ...(isCollapsed
