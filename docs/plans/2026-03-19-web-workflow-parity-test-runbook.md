@@ -6,6 +6,8 @@
 
 **Current release gate:** **Phase 1 only** — core research workflow parity.
 
+**Phase 1 implementation status:** Code-complete with automated coverage for all Phase-1 browser workflow surfaces. The remaining release decision is manual runbook execution and evidence capture, not additional Phase-1 implementation.
+
 Phase 2 and Phase 3 case groups are included as a draft inventory so later work can extend the same case-ID system without changing the document shape.
 
 ## Evidence policy
@@ -158,7 +160,7 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 ### Case PH1-IMPORT-DOI-001 — Import a DOI from the browser workflow
 
 - **Scope:** Phase 1 target
-- **Automated coverage:** planned extension of `tests/integration/web-import.test.ts`
+- **Automated coverage:** `tests/integration/web-import.test.ts`, `tests/frontend/web/import-workspace.test.tsx`
 - **Preconditions:** Phase-1 DOI support has landed
 
 **Steps:**
@@ -187,7 +189,7 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 ### Case PH1-IMPORT-PDF-001 — Upload a PDF from the browser workflow
 
 - **Scope:** Phase 1
-- **Automated coverage:** `tests/integration/web-import.test.ts`; frontend coverage to be added with the import workspace
+- **Automated coverage:** `tests/integration/web-import.test.ts`, `tests/frontend/web/import-workspace.test.tsx`
 - **Preconditions:** A small test PDF is available locally
 
 **Steps:**
@@ -217,7 +219,7 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 ### Case PH1-JOBS-001 — Job list and progress recovery
 
 - **Scope:** Phase 1
-- **Automated coverage:** `tests/integration/web-job-stream.test.ts`; planned `tests/frontend/web/jobs-page.test.tsx`
+- **Automated coverage:** `tests/integration/web-job-stream.test.ts`, `tests/frontend/web/jobs-page.test.tsx`
 - **Preconditions:** At least one import or analysis job exists
 
 **Steps:**
@@ -275,7 +277,7 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 ### Case PH1-PAPER-001 — Paper overview workflow
 
 - **Scope:** Phase 1 target
-- **Automated coverage:** planned `tests/integration/web-paper-detail.test.ts`, planned `tests/frontend/web/paper-overview-page.test.tsx`
+- **Automated coverage:** `tests/integration/web-paper-detail.test.ts`, `tests/frontend/web/paper-overview-page.test.tsx`
 - **Preconditions:** Phase-1 paper overview page has landed
 
 **Steps:**
@@ -304,7 +306,7 @@ Run Phase 1 cases in the order below. This keeps failures easy to localize.
 ### Case PH1-READER-001 — Browser-safe reading workspace
 
 - **Scope:** Phase 1 target
-- **Automated coverage:** `tests/frontend/web/reader-page.test.tsx`; planned extensions in `tests/integration/web-paper-detail.test.ts` and `tests/integration/web-reading-search.test.ts`
+- **Automated coverage:** `tests/frontend/web/reader-page.test.tsx`, `tests/integration/web-reading-search.test.ts`
 - **Preconditions:** A paper with a stored PDF exists; Phase-1 reader upgrade has landed
 
 **Steps:**
@@ -454,6 +456,47 @@ Phase 1 is ready only when:
 4. `npm run test` passes
 5. `npm run test:frontend` passes
 6. `npm run build` passes
+
+## Phase 1 closeout snapshot (2026-03-19)
+
+**Current status:** Phase 1 implementation and automated verification are complete. Manual browser evidence capture from the PH1 cases above is still the remaining release-signoff step.
+
+### Automated execution record captured for Task 7
+
+**Targeted Phase-1 suites executed:**
+
+- `npm run test -- tests/unit/web-contracts.test.ts tests/unit/http-client.test.ts tests/integration/web-paper-detail.test.ts tests/integration/web-import.test.ts tests/integration/web-reading-search.test.ts tests/integration/web-job-stream.test.ts tests/integration/web-config.test.ts` → `7 passed`; `60 passed`
+- `npm run test:frontend -- tests/frontend/web/library-page.test.tsx tests/frontend/web/import-workspace.test.tsx tests/frontend/web/paper-overview-page.test.tsx tests/frontend/web/reader-page.test.tsx tests/frontend/web/jobs-page.test.tsx tests/frontend/web/search-page.test.tsx` → `6 passed`; `11 passed`
+
+**Repository-level release gate executed:**
+
+- `npm run lint` → passed
+- `npm run test` → passed on the authoritative sequential rerun (`51 passed`, `1 skipped`; `534 passed`, `48 skipped`)
+- `npm run test:frontend` → passed (`12 passed`; `119 passed`)
+- `npm run build` → passed
+
+### Phase-1 case IDs with direct automated coverage
+
+- `PH1-BOOT-001` → `tests/integration/web-runtime-pure-node.test.ts`, `tests/integration/web-config.test.ts`, `tests/integration/web-server-health.test.ts`
+- `PH1-LIB-001` → `tests/integration/web-papers.test.ts`, `tests/frontend/web/library-page.test.tsx`
+- `PH1-IMPORT-ARXIV-001` → `tests/integration/web-import.test.ts`, `tests/frontend/web/library-page.test.tsx`
+- `PH1-IMPORT-DOI-001` → `tests/integration/web-import.test.ts`, `tests/frontend/web/import-workspace.test.tsx`
+- `PH1-IMPORT-PDF-001` → `tests/integration/web-import.test.ts`, `tests/frontend/web/import-workspace.test.tsx`
+- `PH1-JOBS-001` → `tests/integration/web-job-stream.test.ts`, `tests/frontend/web/jobs-page.test.tsx`, `tests/integration/web-config.test.ts`
+- `PH1-SEARCH-001` → `tests/integration/web-reading-search.test.ts`, `tests/frontend/web/search-page.test.tsx`
+- `PH1-PAPER-001` → `tests/integration/web-paper-detail.test.ts`, `tests/frontend/web/paper-overview-page.test.tsx`, `tests/integration/web-config.test.ts`
+- `PH1-READER-001` → `tests/integration/web-reading-search.test.ts`, `tests/frontend/web/reader-page.test.tsx`
+- `PH1-NOTES-001` → `tests/integration/web-reading-search.test.ts`, `tests/frontend/web/reader-page.test.tsx`
+- `PH1-ERR-IDENTIFIER-001` → `tests/integration/web-import.test.ts`
+- `PH1-ERR-PDF-001` → `tests/integration/web-import.test.ts`
+- `PH1-PERSIST-001` → `tests/integration/web-runtime-pure-node.test.ts`
+
+### Known non-blocking verification notes
+
+- `npm run test` first showed one timeout in `tests/integration/web-runtime-pure-node.test.ts` when it was run in parallel with build/frontend/lint; the same file passed immediately when rerun alone, and the full suite passed on the final sequential rerun
+- `npm run test:frontend` still emits known non-fatal Happy DOM iframe fetch noise for `http://localhost:3000/papers/paper-1/pdf`
+- `npm run test:frontend` still emits pre-existing unrelated `act(...)` warnings in `TodoForm` / `IdeaChatModal` tests
+- `npm run build` still emits existing non-fatal large-bundle warnings for `dist/main`, `dist/renderer`, and `dist/server`
 
 ## Draft inventory for later phases
 

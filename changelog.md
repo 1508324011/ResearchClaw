@@ -2,6 +2,27 @@
 
 ## 2026-03-19
 
+### docs: finalize phase-1 web workflow parity release guidance
+
+**Summary**: Completed Task 7 of the Phase-1 web workflow parity plan by refreshing the manual release runbook with the now-landed browser coverage map, recording fresh targeted and repo-wide verification evidence, and documenting the final Phase-1 release posture as implementation-complete pending manual evidence capture.
+
+**Changes**:
+
+1. Updated `docs/plans/2026-03-19-web-workflow-parity-test-runbook.md` so the Phase-1 runbook now reflects the final landed browser workflow: import workspace, overview, server-backed reader, notes continuity, and jobs recovery
+2. Replaced stale `planned` automation notes in the runbook with the actual automated coverage files now present in the repo for DOI import, PDF upload, jobs recovery, paper overview, and browser reader flows
+3. Recorded fresh Task 7 validation evidence so the Phase-1 release gate now points at the latest targeted suite results plus the final repository-level lint/test/test:frontend/build gates
+
+**Test validation**:
+
+- Verified targeted Phase-1 backend suite: `npm run test -- tests/unit/web-contracts.test.ts tests/unit/http-client.test.ts tests/integration/web-paper-detail.test.ts tests/integration/web-import.test.ts tests/integration/web-reading-search.test.ts tests/integration/web-job-stream.test.ts tests/integration/web-config.test.ts` passed (`7 passed`; `60 passed`)
+- Verified targeted Phase-1 frontend suite: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx tests/frontend/web/import-workspace.test.tsx tests/frontend/web/paper-overview-page.test.tsx tests/frontend/web/reader-page.test.tsx tests/frontend/web/jobs-page.test.tsx tests/frontend/web/search-page.test.tsx` passed (`6 passed`; `11 passed`)
+- Verified fresh repository lint gate: `npm run lint` passed
+- Observed one transient timeout when `npm run test` was first run in parallel with build and other gates; re-running `tests/integration/web-runtime-pure-node.test.ts` in isolation passed (`4 passed`), and the full suite also passed on a clean sequential rerun
+- Verified fresh repository test suite on the authoritative sequential rerun: `npm run test` passed (`51 passed`, `1 skipped`; `534 passed`, `48 skipped`)
+- Verified fresh frontend suite: `npm run test:frontend` passed (`12 passed`; `119 passed`)
+- Verified fresh production builds: `npm run build` passed
+- Recorded known non-blocking verification noise in the final release guidance: Happy DOM iframe fetch `ECONNREFUSED`, pre-existing unrelated `act(...)` warnings, and existing large-bundle build warnings
+
 ### feat: add browser job recovery page for workflow parity
 
 **Summary**: Completed Task 6 of the Phase-1 web workflow parity plan by adding a browser jobs page that recovers server-owned job snapshots, keeps progress visible through per-job SSE subscriptions, and exposes recovery entry points from the existing library/search flow.
