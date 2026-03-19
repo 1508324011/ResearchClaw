@@ -1,5 +1,11 @@
+import fs from 'node:fs/promises';
 import http from 'http';
-import { ListPapersRequestSchema, ListPapersResponseSchema, type PaperSummary } from '@shared';
+import {
+  GetPaperDetailResponseSchema,
+  ListPapersRequestSchema,
+  ListPapersResponseSchema,
+  type PaperSummary,
+} from '@shared';
 import { ZodError } from 'zod';
 import { PapersService } from '../../main/services/papers.service';
 import { WebImportError, WebImportService } from '../services/web-import.service';
@@ -15,6 +21,19 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
 
 function getPathname(req: http.IncomingMessage): string {
   return (req.url ?? '/').split('?')[0];
+}
+
+function getPaperRouteMatch(
+  pathname: string,
+): { kind: 'detail'; paperId: string } | { kind: 'pdf'; paperId: string } | null {
+  const match = pathname.match(/^\/papers\/([^/]+)(?:\/(pdf))?$/);
+  if (!match?.[1]) {
+    return null;
+  }
+
+  return match[2] === 'pdf'
+    ? { kind: 'pdf', paperId: match[1] }
+    : { kind: 'detail', paperId: match[1] };
 }
 
 function toIsoString(value: Date | string): string {
@@ -75,9 +94,11 @@ async function readBody(req: http.IncomingMessage): Promise<Buffer> {
 
 export function isPapersRoute(req: http.IncomingMessage): boolean {
   const pathname = getPathname(req);
+  const paperRouteMatch = getPaperRouteMatch(pathname);
   return (
     (req.method === 'GET' && pathname === '/papers') ||
-    (req.method === 'POST' && pathname === '/papers/import')
+    (req.method === 'POST' && pathname === '/papers/import') ||
+    (req.method === 'GET' && paperRouteMatch !== null)
   );
 }
 
@@ -90,6 +111,8 @@ export async function handlePapersRoute(
   const pathname = getPathname(req);
 
   try {
+    const paperRouteMatch = getPaperRouteMatch(pathname);
+
     if (req.method === 'GET' && pathname === '/papers') {
       const url = new URL(req.url ?? '/papers', 'http://127.0.0.1');
       const rawYear = url.searchParams.get('year');
@@ -107,6 +130,50 @@ export async function handlePapersRoute(
       });
 
       sendJson(res, 200, response);
+      return;
+    }
+
+    if (req.method === 'GET' && paperRouteMatch?.kind === 'detail') {
+      const paper = await papersService.getById(paperRouteMatch.paperId);
+      if (!paper) {
+        sendJson(res, 404, { error: 'Paper not found.' });
+        return;
+      }
+
+      const response = GetPaperDetailResponseSchema.parse({
+        paper: mapPaperSummary(paper),
+        pdfUrl: paper.pdfPath ? `/papers/${paper.id}/pdf` : null,
+      });
+      sendJson(res, 200, response);
+      return;
+    }
+
+    if (req.method === 'GET' && paperRouteMatch?.kind === 'pdf') {
+      const paper = await papersService.getById(paperRouteMatch.paperId);
+      if (!paper) {
+        sendJson(res, 404, { error: 'Paper not found.' });
+        return;
+      }
+
+      if (!paper.pdfPath) {
+        sendJson(res, 404, { error: 'Paper PDF not found.' });
+        return;
+      }
+
+      let fileBuffer: Buffer;
+      try {
+        fileBuffer = await fs.readFile(paper.pdfPath);
+      } catch {
+        sendJson(res, 404, { error: 'Paper PDF not found.' });
+        return;
+      }
+
+      res.writeHead(200, {
+        'content-type': 'application/pdf',
+        'cache-control': 'no-cache',
+        'content-disposition': 'inline; filename="paper.pdf"',
+      });
+      res.end(fileBuffer);
       return;
     }
 
