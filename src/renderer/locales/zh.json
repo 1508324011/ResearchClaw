@@ -382,7 +382,7 @@
     "library": {
       "title": "文献库",
       "subtitle": "最近导入的论文会直接出现在这里，并可继续在浏览器流程中打开。",
-      "empty": "还没有论文。先导入一篇 arXiv 论文，启动浏览器原生流程。",
+      "empty": "还没有论文。先导入一个标识符或上传 PDF，启动浏览器原生流程。",
       "localPaper": "本地论文",
       "importTitle": "导入到 Web 工作区",
       "importHint": "粘贴 arXiv 编号或 URL。服务器会保存论文，并直接在浏览器阅读页中打开。",
@@ -392,6 +392,26 @@
       "importing": "导入中…",
       "openReader": "打开阅读页",
       "openNotes": "打开笔记"
+    },
+    "import": {
+      "title": "导入工作区",
+      "subtitle": "可选择标识符导入或直接上传 PDF，保持浏览器流程简洁、快速，并由服务器统一持久化。",
+      "tabIdentifier": "标识符导入",
+      "tabPdf": "PDF 上传",
+      "identifierKind": "标识符类型",
+      "identifierValue": "标识符或 URL",
+      "identifierPlaceholder": "例如 2401.01234、10.1000/example-doi 或 https://example.com/paper",
+      "kindArxiv": "arXiv",
+      "kindDoi": "DOI",
+      "kindUrl": "URL",
+      "pdfInput": "选择 PDF",
+      "pdfHint": "直接从浏览器上传 PDF。服务器会保存文件，并把它重新接入 Web 工作流。",
+      "submit": "导入到浏览器流程",
+      "importingIdentifier": "正在导入标识符…",
+      "importingPdf": "正在上传 PDF…",
+      "successTitle": "论文已导入到浏览器工作流。",
+      "openReader": "打开导入论文",
+      "openNotes": "打开导入笔记"
     },
     "search": {
       "title": "搜索论文",

@@ -2,6 +2,28 @@
 
 ## 2026-03-19
 
+### feat: add browser import workspace for workflow parity
+
+**Summary**: Completed Task 3 of the Phase-1 web workflow parity plan by replacing the narrow arXiv-only library import box with a browser-native import workspace that supports explicit identifier kinds, direct PDF uploads, local error handling, and post-import handoff into reader/notes.
+
+**Changes**:
+
+1. Added `src/web/components/import-workspace.tsx` so the web library now has a dedicated import workspace with identifier/PDF tabs, explicit `arxiv` / `doi` / `url` selection, upload state, success handoff links, and localized browser-facing copy
+2. Updated `src/web/pages/library/page.tsx` to delegate import behavior to the new workspace component while keeping the imported paper list synchronized in-place instead of forcing an immediate redirect after submit
+3. Added/expanded frontend coverage in `tests/frontend/web/import-workspace.test.tsx`, `tests/frontend/web/library-page.test.tsx`, and `tests/frontend/web/test-utils.tsx` so the Phase-1 browser workflow now locks identifier imports, PDF uploads, local errors, and reader navigation before broader web milestones build on it
+4. Synchronized `README.md`, `README_CN.md`, and the web library empty-state copy so the documented/browser-visible import surface now consistently describes identifier and PDF-based browser imports instead of the older arXiv-only wording
+
+**Test validation**:
+
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx` failed because the library page still rendered the old `web.library.import*` single-field form instead of the new import workspace controls
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/import-workspace.test.tsx` failed because `src/web/components/import-workspace.tsx` did not exist yet
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx` passed (`1 passed`)
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/import-workspace.test.tsx` passed (`3 passed`)
+- Verified fresh repository lint after final formatting: `npm run lint` passed
+- Verified fresh repository test suite after final formatting: `npm run test` passed (`51 passed`, `1 skipped`; `531 passed`, `48 skipped`)
+- Verified fresh frontend suite after final formatting: `npm run test:frontend` passed (`10 passed`; `114 passed`)
+- Verified fresh production builds after final formatting: `npm run build` passed
+
 ### feat: add browser-safe web paper detail and identifier import routes
 
 **Summary**: Completed Task 2 of the Phase-1 web workflow parity plan by adding browser-safe paper detail and PDF asset routes, while broadening the server-owned identifier import path beyond the original arXiv-only slice.

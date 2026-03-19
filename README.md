@@ -28,7 +28,7 @@
 ### Current fork status
 
 - **Desktop app remains available** for the original Electron workflow.
-- **Web runtime is now available for the first browser slice**: library, arXiv identifier import, search, reader, and notes.
+- **Web runtime is now available for the first browser slice**: library, a browser import workspace (arXiv / DOI / URL / PDF), search, reader, and notes.
 - **Same-origin runtime**: one Node server serves both the browser app and the web APIs.
 - **Docker-first deployment path**: build `dist/web` + `dist/server/index.js`, then run as a single service.
 
@@ -58,7 +58,7 @@ _Organize papers into projects and generate AI-powered research ideas._
 | :---------------------- | :------------------------------------------------------------------------------------------------ |
 | **Desktop app**         | Original Electron workflow for dashboards, projects, chat-heavy reading, and broader app features |
 | **Web library**         | Browser-native paper list backed by `GET /papers`                                                 |
-| **Web import**          | Browser-native arXiv identifier import backed by `POST /papers/import`                            |
+| **Web import**          | Browser-native import workspace for arXiv / DOI / URL identifiers and direct PDF upload           |
 | **Web search**          | Same-origin text/semantic search via `GET /search`                                                |
 | **Web reader**          | Browser-native paper summary + latest note preview via `GET /reading/:paperId`                    |
 | **Web notes**           | Save structured note summaries via `POST /reading/:paperId/notes`                                 |
@@ -149,6 +149,7 @@ dist/
 
 - The browser app and web APIs share the same origin.
 - `/search` is both a browser route and an API endpoint. HTML navigations are served when the request advertises `Accept: text/html`; JSON/API requests continue to the existing search API.
+- The Phase-1 browser import workspace intentionally stays narrow: explicit identifier selection (`arXiv`, `DOI`, `URL`), direct PDF upload, local error handling, and post-import handoff into reader/notes.
 - The current Docker/web runtime is intentionally **reliability-first**: it reuses the existing service graph, including some Electron-adjacent dependencies pulled in through `src/main/services`.
 
 ## License

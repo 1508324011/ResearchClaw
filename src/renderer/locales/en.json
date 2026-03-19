@@ -382,7 +382,7 @@
     "library": {
       "title": "Library",
       "subtitle": "Your recent papers stay visible, searchable, and ready to open in the browser flow.",
-      "empty": "No papers yet. Import an arXiv paper to start the browser-native workflow.",
+      "empty": "No papers yet. Import an identifier or upload a PDF to start the browser-native workflow.",
       "localPaper": "Local paper",
       "importTitle": "Import into web workspace",
       "importHint": "Paste an arXiv identifier or URL. The server stores the paper and opens it directly in the browser reader.",
@@ -392,6 +392,26 @@
       "importing": "Importing…",
       "openReader": "Open reader",
       "openNotes": "Open notes"
+    },
+    "import": {
+      "title": "Import workspace",
+      "subtitle": "Choose an identifier or upload a PDF. Keep the browser workflow narrow, fast, and server-owned.",
+      "tabIdentifier": "Identifier",
+      "tabPdf": "PDF Upload",
+      "identifierKind": "Identifier type",
+      "identifierValue": "Identifier or URL",
+      "identifierPlaceholder": "e.g. 2401.01234, 10.1000/example-doi, or https://example.com/paper",
+      "kindArxiv": "arXiv",
+      "kindDoi": "DOI",
+      "kindUrl": "URL",
+      "pdfInput": "Choose a PDF",
+      "pdfHint": "Upload a PDF directly from your browser. The server will store it and reopen it in the web workflow.",
+      "submit": "Import into browser flow",
+      "importingIdentifier": "Importing identifier…",
+      "importingPdf": "Uploading PDF…",
+      "successTitle": "Paper imported into the browser workflow.",
+      "openReader": "Open imported paper",
+      "openNotes": "Open imported notes"
     },
     "search": {
       "title": "Search papers",

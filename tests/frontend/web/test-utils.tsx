@@ -1,4 +1,5 @@
 import type {
+  GetPaperDetailResponse,
   GetReadingDetailResponse,
   ImportPaperResponse,
   JobStatus,
@@ -58,6 +59,16 @@ export function createMockClient(options: MockClientOptions = {}) {
     jobId: 'job-1',
   } satisfies ImportPaperResponse);
 
+  const importPdf = vi.fn<ResearchClawClient['importPdf']>().mockResolvedValue({
+    paper: importedPaper,
+    jobId: 'job-2',
+  } satisfies ImportPaperResponse);
+
+  const getPaperDetail = vi.fn<ResearchClawClient['getPaperDetail']>().mockResolvedValue({
+    paper: importedPaper,
+    pdfUrl: `/papers/${importedPaper.id}/pdf`,
+  } satisfies GetPaperDetailResponse);
+
   const getReadingDetail = vi
     .fn<ResearchClawClient['getReadingDetail']>()
     .mockImplementation(async () => readingDetail);
@@ -105,7 +116,9 @@ export function createMockClient(options: MockClientOptions = {}) {
 
   const client: ResearchClawClient = {
     listPapers,
+    importPdf,
     importByIdentifier,
+    getPaperDetail,
     getReadingDetail,
     saveReadingNote,
     search,
@@ -117,7 +130,9 @@ export function createMockClient(options: MockClientOptions = {}) {
     client,
     spies: {
       listPapers,
+      importPdf,
       importByIdentifier,
+      getPaperDetail,
       getReadingDetail,
       saveReadingNote,
       search,

@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe('web library page', () => {
-  it('lists papers and imports a new paper into the browser flow', async () => {
+  it('lists papers and imports a new paper through the browser workspace', async () => {
     const importedPaper = createPaperSummary({
       id: 'paper-2',
       shortId: '2401.01234',
@@ -42,12 +42,19 @@ describe('web library page', () => {
 
     expect(await screen.findByText('Graph Foundations')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('web.library.importLabel'), '2401.01234');
-    await user.click(screen.getByRole('button', { name: 'web.library.importAction' }));
+    await user.type(screen.getByLabelText('web.import.identifierValue'), '2401.01234');
+    await user.click(screen.getByRole('button', { name: 'web.import.submit' }));
 
     await waitFor(() => {
       expect(spies.importByIdentifier).toHaveBeenCalledWith({ value: '2401.01234', kind: 'arxiv' });
     });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Imported Planning Paper' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: 'web.import.openReader' }));
+
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/papers/paper-2/reader');
     });
