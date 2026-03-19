@@ -258,16 +258,19 @@ export function SearchContent() {
   }, [query, reloadPapers, searchMode, semanticFallbackReason]);
 
   const doNormalSearch = useCallback(
-    (q: string) => {
+    async (q: string) => {
       if (!q.trim()) {
         setHasSearched(false);
         setPapers([]);
         return;
       }
+
+      const items = allPapers.length > 0 ? allPapers : await reloadPapers();
+
       setHasSearched(true);
-      setPapers(getNormalSearchResults(allPapers, q, fuseRef.current));
+      setPapers(getNormalSearchResults(items, q, new Fuse(items, FUSE_OPTIONS)));
     },
-    [allPapers],
+    [allPapers, reloadPapers],
   );
 
   const doAgenticSearch = useCallback(async (q: string) => {
@@ -332,7 +335,7 @@ export function SearchContent() {
             result.fallbackReason ??
               'Semantic search is unavailable. Showing normal results instead.',
           );
-          doNormalSearch(q);
+          await doNormalSearch(q);
           return;
         }
         setSemanticPapers(result.papers);
@@ -343,7 +346,7 @@ export function SearchContent() {
             ? error.message
             : 'Semantic search failed. Showing normal results instead.',
         );
-        doNormalSearch(q);
+        await doNormalSearch(q);
       } finally {
         setLoading(false);
       }

@@ -29,29 +29,16 @@ import type {
   SaveReadingNoteResponse,
   SearchResponse,
 } from '@shared';
+import type { ElectronBridgeApi } from '../../shared/platform/researchclaw-host';
+import { getResearchClawHost } from '../host/electron-host';
 import type { ResearchClawClient } from '../lib/researchclaw-client';
 
 export type { TaskResultItem, ExperimentReportItem };
 
 declare global {
   interface Window {
-    electronAPI?: {
-      invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
-      on: (channel: string, listener: (...args: unknown[]) => void) => () => void;
-      off: (channel: string, listener: (...args: unknown[]) => void) => void;
-      once: (channel: string, listener: (...args: unknown[]) => void) => void;
-      readLocalFile: (path: string) => Promise<string>;
-      // Window controls
-      windowClose: () => Promise<void>;
-      windowMinimize: () => Promise<void>;
-      windowMaximize: () => Promise<void>;
-      windowIsMaximized: () => Promise<boolean>;
-    };
+    electronAPI?: ElectronBridgeApi;
   }
-}
-
-function getElectronAPI() {
-  return typeof window === 'undefined' ? undefined : window.electronAPI;
 }
 
 let configuredResearchClawClient: ResearchClawClient | null = null;
@@ -105,6 +92,21 @@ function toLegacySearchResponse(searchResponse: SearchResponse): {
   };
 }
 
+function toLegacyReadingNote(note: GetReadingDetailResponse['note']): ReadingNote | null {
+  if (!note) {
+    return null;
+  }
+
+  return {
+    id: note.id,
+    title: note.title,
+    contentJson: JSON.stringify(note.content),
+    content: note.content,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+  };
+}
+
 async function invokeThroughFallback<T>(channel: string, ...args: unknown[]): Promise<T> {
   const client = configuredResearchClawClient;
 
@@ -117,10 +119,76 @@ async function invokeThroughFallback<T>(channel: string, ...args: unknown[]): Pr
       const response = await client.listPapers((args[0] as ListPapersRequest | undefined) ?? {});
       return response.items.map(toLegacyPaperItem) as T;
     }
+    case 'papers:getByShortId': {
+      const shortId = args[0] as string;
+      const response = await client.listPapers({});
+      const summary = response.items.find(
+        (candidate) => candidate.shortId === shortId || candidate.id === shortId,
+      );
+
+      if (!summary) {
+        throw new Error(`Paper not found for route id "${shortId}".`);
+      }
+
+      const detail = await client.getPaperDetail({ paperId: summary.id });
+      return {
+        ...toLegacyPaperItem(detail.paper),
+        pdfUrl: detail.pdfUrl ?? undefined,
+      } as T;
+    }
     case 'papers:importByIdentifier':
       return client.importByIdentifier(args[0] as ImportByIdentifierRequest) as Promise<T>;
     case 'reading:getDetail':
       return client.getReadingDetail({ paperId: args[0] as string }) as Promise<T>;
+    case 'reading:listByPaper': {
+      const detail = await client.getReadingDetail({ paperId: args[0] as string });
+      const note = toLegacyReadingNote(detail.note);
+      return (note ? [note] : []) as T;
+    }
+    case 'reading:create': {
+      const input = args[0] as {
+        paperId: string;
+        title?: string;
+        content?: Record<string, unknown>;
+      };
+      const response = await client.saveReadingNote({
+        paperId: input.paperId,
+        title: input.title,
+        content: input.content ?? {},
+      });
+      return {
+        ...response.note,
+        contentJson: JSON.stringify(response.note.content),
+      } as T;
+    }
+    case 'reading:update': {
+      const noteId = args[0] as string;
+      const content = (args[1] as Record<string, unknown>) ?? {};
+      const papers = await client.listPapers({});
+      let paperId: string | null = null;
+
+      for (const paper of papers.items) {
+        const detail = await client.getReadingDetail({ paperId: paper.id });
+        if (detail.note?.id === noteId) {
+          paperId = paper.id;
+          break;
+        }
+      }
+
+      if (!paperId) {
+        throw new Error(`Reading note not found for note id "${noteId}".`);
+      }
+
+      const response = await client.saveReadingNote({
+        noteId,
+        paperId,
+        content,
+      });
+      return {
+        ...response.note,
+        contentJson: JSON.stringify(response.note.content),
+      } as T;
+    }
     case 'reading:saveNote':
       return client.saveReadingNote(args[0] as SaveReadingNoteRequest) as Promise<T>;
     case 'papers:search': {
@@ -131,6 +199,13 @@ async function invokeThroughFallback<T>(channel: string, ...args: unknown[]): Pr
       });
       return toLegacySearchResponse(response) as T;
     }
+    case 'settings:get':
+      return {
+        papersDir: '',
+        editorCommand: 'code',
+      } as T;
+    case 'settings:getStorageRoot':
+      return '' as T;
     case 'jobs:listStatus':
       return client.listJobStatus() as Promise<T>;
     default:
@@ -141,8 +216,8 @@ async function invokeThroughFallback<T>(channel: string, ...args: unknown[]): Pr
 }
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
-  const electronAPI = getElectronAPI();
-  if (!electronAPI) {
+  const host = getResearchClawHost();
+  if (host.kind !== 'electron') {
     if (configuredResearchClawClient) {
       return invokeThroughFallback<T>(channel, ...args);
     }
@@ -152,7 +227,7 @@ async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
     );
   }
 
-  const result = await electronAPI.invoke(channel, ...args);
+  const result = await host.invoke<unknown>(channel, ...args);
   // Check if result is an IpcResult wrapper (has 'success' AND either 'data' or 'error' as top-level keys)
   // This distinguishes IpcResult { success, data?, error? } from direct result objects like { success, output, ... }
   if (
@@ -773,9 +848,9 @@ export const ipc = {
   listImportStatus: () => invoke<JobStatus[]>('jobs:listStatus'),
 
   onJobProgress: (channel: string, listener: (...args: unknown[]) => void) => {
-    const electronAPI = getElectronAPI();
-    if (electronAPI) {
-      return electronAPI.on(channel, listener);
+    const host = getResearchClawHost();
+    if (host.kind === 'electron') {
+      return host.on(channel, listener);
     }
 
     const client = getResearchClawClient();
@@ -1383,30 +1458,13 @@ export const ipc = {
     invoke<TaskResultItem[]>('reports:listTaskResults', params.projectId),
 
   // Window controls (for Windows title bar)
-  windowClose: () => {
-    const api = getElectronAPI();
-    return api?.windowClose?.() ?? Promise.resolve();
-  },
-  windowMinimize: () => {
-    const api = getElectronAPI();
-    return api?.windowMinimize?.() ?? Promise.resolve();
-  },
-  windowMaximize: () => {
-    const api = getElectronAPI();
-    return api?.windowMaximize?.() ?? Promise.resolve();
-  },
-  windowIsMaximized: () => {
-    const api = getElectronAPI();
-    return api?.windowIsMaximized?.() ?? Promise.resolve(false);
-  },
+  windowClose: () => getResearchClawHost().windowClose(),
+  windowMinimize: () => getResearchClawHost().windowMinimize(),
+  windowMaximize: () => getResearchClawHost().windowMaximize(),
+  windowIsMaximized: () => getResearchClawHost().windowIsMaximized(),
 };
 
 /** Subscribe to IPC events from main process */
 export function onIpc(channel: string, listener: (...args: unknown[]) => void): () => void {
-  const electronAPI = getElectronAPI();
-  if (!electronAPI) {
-    return () => undefined;
-  }
-
-  return electronAPI.on(channel, listener);
+  return getResearchClawHost().on(channel, listener);
 }

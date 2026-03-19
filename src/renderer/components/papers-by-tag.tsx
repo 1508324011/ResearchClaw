@@ -304,9 +304,20 @@ export function PapersByTag({
   const fetchPapers = useCallback(async () => {
     setLoading(true);
     try {
-      const [paperData, tagData] = await Promise.all([ipc.listPapers(), ipc.listAllTags()]);
-      setPapers(paperData);
-      setAllTags(tagData);
+      const [paperResult, tagResult] = await Promise.allSettled([
+        ipc.listPapers(),
+        ipc.listAllTags(),
+      ]);
+
+      if (paperResult.status === 'fulfilled') {
+        setPapers(paperResult.value);
+      }
+
+      if (tagResult.status === 'fulfilled' && Array.isArray(tagResult.value)) {
+        setAllTags(tagResult.value);
+      } else {
+        setAllTags([]);
+      }
     } catch {
       // silent
     } finally {
@@ -344,7 +355,7 @@ export function PapersByTag({
         lastRefreshCountRef.current = typedStatus.completed;
         ipc
           .listAllTags()
-          .then(setAllTags)
+          .then((tags) => setAllTags(Array.isArray(tags) ? tags : []))
           .catch(() => undefined);
       }
 
