@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ipc, type ScanResult, type ImportStatus, type SearchResultItem } from '../hooks/use-ipc';
+import {
+  getResearchClawClient,
+  ipc,
+  type ScanResult,
+  type ImportStatus,
+  type SearchResultItem,
+} from '../hooks/use-ipc';
 import { onIpc } from '../hooks/use-ipc';
 import { cleanArxivTitle } from '@shared';
+import { getResearchClawHost } from '../host/electron-host';
 import {
   Download,
   X,
@@ -92,12 +99,14 @@ export function ImportModal({
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [localInput, setLocalInput] = useState('');
   const [localPdfFiles, setLocalPdfFiles] = useState<string[]>([]);
+  const [browserPdfFiles, setBrowserPdfFiles] = useState<File[]>([]);
   const [localDoneMessage, setLocalDoneMessage] = useState('');
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState('');
   const [isVisible, setIsVisible] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const browserPdfInputRef = useRef<HTMLInputElement>(null);
 
   // Search tab state
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,6 +115,7 @@ export function ImportModal({
   const [selectedSearchIds, setSelectedSearchIds] = useState<Set<string>>(new Set());
   const [searchError, setSearchError] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isBrowserHost = getResearchClawHost().kind !== 'electron';
 
   // Handle ESC key to close
   useEffect(() => {
@@ -339,12 +349,42 @@ export function ImportModal({
     });
   }, []);
 
+  const addBrowserPdfFiles = useCallback((newFiles: File[]) => {
+    setBrowserPdfFiles((prev) => {
+      const existing = new Set(
+        prev.map((file) => `${file.name}:${file.size}:${file.lastModified}`),
+      );
+      const filtered = newFiles.filter(
+        (file) => !existing.has(`${file.name}:${file.size}:${file.lastModified}`),
+      );
+      return [...prev, ...filtered];
+    });
+  }, []);
+
   // Remove a single PDF file from list
   const removePdfFile = useCallback((filePath: string) => {
     setLocalPdfFiles((prev) => prev.filter((f) => f !== filePath));
   }, []);
 
+  const removeBrowserPdfFile = useCallback((targetFile: File) => {
+    setBrowserPdfFiles((prev) =>
+      prev.filter(
+        (file) =>
+          !(
+            file.name === targetFile.name &&
+            file.size === targetFile.size &&
+            file.lastModified === targetFile.lastModified
+          ),
+      ),
+    );
+  }, []);
+
   const handleSelectLocalPdf = useCallback(async () => {
+    if (isBrowserHost) {
+      browserPdfInputRef.current?.click();
+      return;
+    }
+
     try {
       const selected = await ipc.selectPdfFile();
       if (selected && selected.length > 0) {
@@ -353,7 +393,23 @@ export function ImportModal({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to select PDF file');
     }
-  }, [addPdfFiles]);
+  }, [addPdfFiles, isBrowserHost]);
+
+  const handleBrowserPdfInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []).filter(
+        (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'),
+      );
+
+      if (files.length > 0) {
+        addBrowserPdfFiles(files);
+        setError('');
+      }
+
+      event.target.value = '';
+    },
+    [addBrowserPdfFiles],
+  );
 
   // Handle drag & drop
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -375,25 +431,31 @@ export function ImportModal({
       setIsDragOver(false);
 
       const files = Array.from(e.dataTransfer.files);
-      const pdfFiles = files
-        .filter((f) => f.name.toLowerCase().endsWith('.pdf'))
-        .map((f) => (f as File & { path?: string }).path)
-        .filter((p): p is string => Boolean(p));
+      const droppedPdfFiles = files.filter((f) => f.name.toLowerCase().endsWith('.pdf'));
 
-      if (pdfFiles.length === 0 && files.length > 0) {
+      if (droppedPdfFiles.length === 0 && files.length > 0) {
         setError('Only PDF files are supported. Please drop .pdf files.');
         return;
       }
 
-      addPdfFiles(pdfFiles);
+      if (isBrowserHost) {
+        addBrowserPdfFiles(droppedPdfFiles);
+        return;
+      }
+
+      const pdfPaths = droppedPdfFiles
+        .map((f) => (f as File & { path?: string }).path)
+        .filter((p): p is string => Boolean(p));
+
+      addPdfFiles(pdfPaths);
     },
-    [addPdfFiles],
+    [addBrowserPdfFiles, addPdfFiles, isBrowserHost],
   );
 
   // Handle local PDF / arXiv import
   const handleLocalImport = useCallback(async () => {
     const trimmedInput = localInput.trim();
-    const hasPdfFiles = localPdfFiles.length > 0;
+    const hasPdfFiles = isBrowserHost ? browserPdfFiles.length > 0 : localPdfFiles.length > 0;
     const hasTextInput = trimmedInput.length > 0;
 
     if (!hasPdfFiles && !hasTextInput) return;
@@ -405,6 +467,37 @@ export function ImportModal({
     try {
       // If we have PDF files, use batch import
       if (hasPdfFiles) {
+        if (isBrowserHost) {
+          const client = getResearchClawClient();
+          if (!client) {
+            throw new Error('Browser import client is unavailable.');
+          }
+
+          let success = 0;
+          let failed = 0;
+
+          for (const pdfFile of browserPdfFiles) {
+            try {
+              await client.importPdf(pdfFile);
+              success++;
+            } catch (importError) {
+              console.error('Failed to import PDF:', pdfFile.name, importError);
+              failed++;
+            }
+          }
+
+          if (success === 0) {
+            throw new Error('Failed to import selected PDF files.');
+          }
+
+          onImported();
+          setLocalDoneMessage(
+            `${success} PDF${success !== 1 ? 's' : ''} imported successfully${failed > 0 ? `, ${failed} failed` : ''}. Background text extraction and indexing have started.`,
+          );
+          setStep('done');
+          return;
+        }
+
         const result = await ipc.importLocalPdfs(localPdfFiles);
         onImported();
         setLocalDoneMessage(
@@ -427,10 +520,11 @@ export function ImportModal({
       setError(err instanceof Error ? err.message : 'Failed to import paper');
       setStep('initial');
     }
-  }, [localInput, localPdfFiles, onImported]);
+  }, [browserPdfFiles, isBrowserHost, localInput, localPdfFiles, onImported]);
 
   // Check if import button should be enabled
-  const canImportLocal = localPdfFiles.length > 0 || localInput.trim().length > 0;
+  const selectedPdfCount = isBrowserHost ? browserPdfFiles.length : localPdfFiles.length;
+  const canImportLocal = selectedPdfCount > 0 || localInput.trim().length > 0;
 
   // Reset state when switching tabs
   const handleTabChange = useCallback((newTab: Tab) => {
@@ -440,6 +534,7 @@ export function ImportModal({
     setError('');
     setLocalInput('');
     setLocalPdfFiles([]);
+    setBrowserPdfFiles([]);
     setLocalDoneMessage('');
     setBatchProgress(null);
   }, []);
@@ -871,55 +966,102 @@ export function ImportModal({
                           Drag & drop PDF files here
                         </p>
                         <p className="mt-1 text-xs text-notion-text-tertiary">or</p>
-                        <button
-                          type="button"
-                          onClick={handleSelectLocalPdf}
-                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white border border-notion-border px-3 py-1.5 text-sm font-medium text-notion-text hover:bg-notion-sidebar-hover transition-colors"
-                        >
-                          <FileText size={14} />
-                          Choose PDF files
-                        </button>
+                        {isBrowserHost ? (
+                          <>
+                            <label
+                              htmlFor="local-pdf-input"
+                              className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-notion-border bg-white px-3 py-1.5 text-sm font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                            >
+                              <FileText size={14} />
+                              Choose PDF files
+                            </label>
+                            <input
+                              ref={browserPdfInputRef}
+                              id="local-pdf-input"
+                              type="file"
+                              accept="application/pdf"
+                              multiple
+                              onChange={handleBrowserPdfInputChange}
+                              className="sr-only"
+                            />
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleSelectLocalPdf}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-notion-border bg-white px-3 py-1.5 text-sm font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                          >
+                            <FileText size={14} />
+                            Choose PDF files
+                          </button>
+                        )}
                       </div>
 
                       {/* Selected files list */}
-                      {localPdfFiles.length > 0 && (
+                      {selectedPdfCount > 0 && (
                         <div>
                           <div className="mb-1.5 flex items-center justify-between">
                             <span className="text-xs font-medium text-notion-text-secondary">
-                              {localPdfFiles.length} file{localPdfFiles.length !== 1 ? 's' : ''}{' '}
-                              selected
+                              {selectedPdfCount} file{selectedPdfCount !== 1 ? 's' : ''} selected
                             </span>
                             <button
-                              onClick={() => setLocalPdfFiles([])}
+                              onClick={() => {
+                                setLocalPdfFiles([]);
+                                setBrowserPdfFiles([]);
+                              }}
                               className="text-xs text-notion-text-tertiary hover:text-red-500 transition-colors"
                             >
                               Clear all
                             </button>
                           </div>
                           <div className="max-h-40 overflow-y-auto rounded-lg border border-notion-border">
-                            {localPdfFiles.map((filePath) => (
-                              <div
-                                key={filePath}
-                                className="group flex items-center gap-2 border-b border-notion-border px-3 py-1.5 last:border-b-0"
-                              >
-                                <FileText
-                                  size={14}
-                                  className="flex-shrink-0 text-notion-text-tertiary"
-                                />
-                                <span className="min-w-0 flex-1 truncate text-sm text-notion-text">
-                                  {getFileName(filePath)}
-                                </span>
-                                <button
-                                  onClick={() => removePdfFile(filePath)}
-                                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <Trash2
-                                    size={14}
-                                    className="text-notion-text-tertiary hover:text-red-500"
-                                  />
-                                </button>
-                              </div>
-                            ))}
+                            {isBrowserHost
+                              ? browserPdfFiles.map((file) => (
+                                  <div
+                                    key={`${file.name}:${file.size}:${file.lastModified}`}
+                                    className="group flex items-center gap-2 border-b border-notion-border px-3 py-1.5 last:border-b-0"
+                                  >
+                                    <FileText
+                                      size={14}
+                                      className="flex-shrink-0 text-notion-text-tertiary"
+                                    />
+                                    <span className="min-w-0 flex-1 truncate text-sm text-notion-text">
+                                      {file.name}
+                                    </span>
+                                    <button
+                                      onClick={() => removeBrowserPdfFile(file)}
+                                      className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                                    >
+                                      <Trash2
+                                        size={14}
+                                        className="text-notion-text-tertiary hover:text-red-500"
+                                      />
+                                    </button>
+                                  </div>
+                                ))
+                              : localPdfFiles.map((filePath) => (
+                                  <div
+                                    key={filePath}
+                                    className="group flex items-center gap-2 border-b border-notion-border px-3 py-1.5 last:border-b-0"
+                                  >
+                                    <FileText
+                                      size={14}
+                                      className="flex-shrink-0 text-notion-text-tertiary"
+                                    />
+                                    <span className="min-w-0 flex-1 truncate text-sm text-notion-text">
+                                      {getFileName(filePath)}
+                                    </span>
+                                    <button
+                                      onClick={() => removePdfFile(filePath)}
+                                      className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                                    >
+                                      <Trash2
+                                        size={14}
+                                        className="text-notion-text-tertiary hover:text-red-500"
+                                      />
+                                    </button>
+                                  </div>
+                                ))}
                           </div>
                         </div>
                       )}
@@ -943,9 +1085,9 @@ export function ImportModal({
                           }
                           placeholder="e.g. 2401.12345 or https://arxiv.org/abs/2401.12345"
                           className="w-full rounded-lg border border-notion-border bg-notion-sidebar px-3 py-2.5 text-sm text-notion-text placeholder-notion-text-tertiary outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                          disabled={localPdfFiles.length > 0}
+                          disabled={selectedPdfCount > 0}
                         />
-                        {localPdfFiles.length > 0 && (
+                        {selectedPdfCount > 0 && (
                           <p className="mt-1 text-xs text-notion-text-tertiary">
                             Clear PDF files above to use arXiv ID/URL input instead.
                           </p>
@@ -1032,7 +1174,7 @@ export function ImportModal({
                       className="inline-flex items-center gap-2 rounded-lg bg-notion-text px-4 py-2 text-sm font-medium text-white hover:opacity-80 disabled:opacity-50"
                     >
                       <Upload size={14} />
-                      {localPdfFiles.length > 1 ? `Import ${localPdfFiles.length} PDFs` : 'Import'}
+                      {selectedPdfCount > 1 ? `Import ${selectedPdfCount} PDFs` : 'Import'}
                     </button>
                   )}
                 </>
