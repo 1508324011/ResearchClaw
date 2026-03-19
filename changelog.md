@@ -2,6 +2,46 @@
 
 ## 2026-03-19
 
+### refactor: bootstrap web through the shared renderer shell
+
+**Summary**: Landed the first executable renderer-first batch by extracting a shared host abstraction, reusing the canonical renderer route tree for web, and proving the browser shell handoff with dedicated parity tests.
+
+**Changes**:
+
+1. Added `src/shared/platform/researchclaw-host.ts`, `src/renderer/host/electron-host.ts`, and `src/web/host/web-host.ts`, then rewired `use-ipc`, `use-main-ready`, `use-chat`, `use-analysis`, and `AppShell` to consume a shared host contract instead of directly branching on `window.electronAPI`
+2. Extracted `src/renderer/router-tree.tsx` and `src/web/router-adapter.tsx`, reduced `src/renderer/router.tsx` to a hash-router wrapper, and replaced the custom `src/web/router.tsx` layout/tree with the canonical renderer-backed route tree plus the explicit `/jobs` waiver route
+3. Added `tests/unit/researchclaw-host.test.ts`, `tests/frontend/web/renderer-shell-parity.test.tsx`, and `tests/frontend/web/canonical-route-handoff.test.tsx`; the web parity tests now explicitly disable the frontend test harness Electron mock so they validate the true browser host path instead of a fake preload environment
+
+### docs: add renderer-first parity matrix and waiver inventory
+
+**Summary**: Added the enforcement document that defines which web routes are canonical, which are still parallel or missing, and which browser-only differences are temporarily allowed.
+
+**Changes**:
+
+1. Added `docs/plans/2026-03-19-renderer-first-web-parity-matrix.md` to freeze the canonical renderer route inventory, current web drift, required host seams, and completion criteria
+2. Recorded `/jobs` and browser-first import behavior as explicit temporary waivers instead of leaving them as implicit product drift
+3. Updated the renderer-first correction design doc so the parity matrix becomes the authoritative waiver inventory and parity-test companion document
+
+### docs: strengthen the renderer-first execution plan
+
+**Summary**: Expanded the renderer-first parity implementation plan so execution starts from the real repo state instead of the earlier high-level outline.
+
+**Changes**:
+
+1. Rewrote `docs/plans/2026-03-19-renderer-first-web-parity-correction-implementation.md` to include current-state checkpoints, explicit route-contract mismatches, the `/jobs` waiver decision point, and the existing web-test migration work that the earlier outline did not account for
+2. Split the execution path more accurately across shell/bootstrap parity, host/provider seams, canonical route-tree sharing, core paper-route migration, reader/notes migration, breadth expansion, and final verification
+3. Added explicit guidance for route-param normalization, existing browser test replacement, and the host-sensitive hooks/providers that must be made web-safe before the renderer shell can mount on web
+
+### docs: reset web parity planning around renderer-first reuse
+
+**Summary**: Replaced the earlier workflow-parity planning assumption with a renderer-first migration design so future web work treats `src/renderer` as the only UI truth and limits `src/web` to host adaptation.
+
+**Changes**:
+
+1. Added `docs/plans/2026-03-19-renderer-first-web-parity-correction-design.md` to record the approved architecture correction: `src/renderer` is now the canonical UI/interaction contract and future web work must adapt host seams instead of extending a parallel browser product tree
+2. Added `docs/plans/2026-03-19-renderer-first-web-parity-correction-implementation.md` with a new execution plan centered on parity matrices, failing renderer-parity tests, host-seam extraction, renderer-backed route bootstrapping, and route-by-route migration away from custom `src/web/pages/*`
+3. Recorded this planning reset in the changelog so subsequent work does not continue under the now-rejected “workflow parity over UI parity” assumption
+
 ### fix: close post-phase1 browser acceptance gaps
 
 **Summary**: Closed the three concrete browser acceptance gaps found during manual Phase-1 testing by widening the reader workspace, turning DOI import into a strict complete-import flow, and raising the browser PDF upload ceiling to a realistic bounded size.
