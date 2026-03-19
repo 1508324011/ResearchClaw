@@ -2,6 +2,23 @@
 
 ## 2026-03-19
 
+### refactor: freeze the phase-1 web parity contract and client surface
+
+**Summary**: Completed Task 1 of the web workflow parity plan by locking the new paper-detail and PDF-import client surface into the shared contracts plus both browser and Electron transports before any server-route or UI expansion.
+
+**Changes**:
+
+1. Extended `src/shared/contracts/papers.ts` with `GetPaperDetailRequestSchema` and `GetPaperDetailResponseSchema` so Phase 1 has an explicit browser-safe detail payload shape, including an optional PDF asset URL
+2. Expanded `src/renderer/lib/researchclaw-client.ts`, `src/renderer/lib/http-client.ts`, and `src/renderer/lib/electron-client.ts` with `getPaperDetail({ paperId })` and `importPdf(file)` so the same workflow-parity transport surface now exists in both the web runtime and the Electron preload bridge
+3. Added unit coverage in `tests/unit/web-contracts.test.ts` and `tests/unit/http-client.test.ts` for the new contracts plus browser multipart upload and Electron IPC detail/import mapping behavior
+
+**Test validation**:
+
+- Verified true RED first: `npm run test -- tests/unit/web-contracts.test.ts` failed because `GetPaperDetailRequestSchema` and `GetPaperDetailResponseSchema` did not exist yet
+- Verified true RED first: `npm run test -- tests/unit/http-client.test.ts` failed because `HttpClient` and `ElectronClient` did not expose `importPdf` or `getPaperDetail`
+- Verified targeted GREEN after implementation: `npm run test -- tests/unit/web-contracts.test.ts` passed (`21 passed`)
+- Verified targeted GREEN after implementation: `npm run test -- tests/unit/http-client.test.ts` passed (`20 passed`)
+
 ### docs: define the staged web workflow parity plan and test gate
 
 **Summary**: Added the next-stage planning documents that freeze web development around workflow parity, define the first executable milestone, and introduce a release-gate manual test runbook for the web effort.
