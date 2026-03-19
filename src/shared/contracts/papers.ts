@@ -42,6 +42,19 @@ export const ImportByIdentifierRequestSchema = z
   })
   .strict();
 
+export const GetPaperDetailRequestSchema = z
+  .object({
+    paperId: z.string().min(1),
+  })
+  .strict();
+
+export const GetPaperDetailResponseSchema = z
+  .object({
+    paper: PaperSummarySchema,
+    pdfUrl: z.string().min(1).nullable().optional(),
+  })
+  .strict();
+
 export const ImportPaperResponseSchema = z
   .object({
     paper: PaperSummarySchema,
@@ -55,4 +68,6 @@ export type PaperSummary = z.infer<typeof PaperSummarySchema>;
 export type ListPapersRequest = z.infer<typeof ListPapersRequestSchema>;
 export type ListPapersResponse = z.infer<typeof ListPapersResponseSchema>;
 export type ImportByIdentifierRequest = z.infer<typeof ImportByIdentifierRequestSchema>;
+export type GetPaperDetailRequest = z.infer<typeof GetPaperDetailRequestSchema>;
+export type GetPaperDetailResponse = z.infer<typeof GetPaperDetailResponseSchema>;
 export type ImportPaperResponse = z.infer<typeof ImportPaperResponseSchema>;

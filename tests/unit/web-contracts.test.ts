@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  GetPaperDetailRequestSchema,
+  GetPaperDetailResponseSchema,
   ImportedWithinSchema,
   ImportByIdentifierRequestSchema,
   ImportPaperResponseSchema,
@@ -87,6 +89,12 @@ describe('web contract schemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('validates paper detail requests', () => {
+      const result = GetPaperDetailRequestSchema.safeParse({ paperId: 'paper-1' });
+
+      expect(result.success).toBe(true);
+    });
+
     it('returns import responses as paper plus optional job id', () => {
       const result = ImportPaperResponseSchema.safeParse({
         paper: {
@@ -98,6 +106,22 @@ describe('web contract schemas', () => {
           updatedAt: '2026-03-17T01:00:00.000Z',
         },
         jobId: 'job-import-1',
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('validates paper detail responses with an optional PDF asset link', () => {
+      const result = GetPaperDetailResponseSchema.safeParse({
+        paper: {
+          id: 'paper-1',
+          shortId: '2503.00001',
+          title: 'Attention Is Still Useful',
+          authors: ['Alice'],
+          createdAt: '2026-03-17T00:00:00.000Z',
+          updatedAt: '2026-03-17T01:00:00.000Z',
+        },
+        pdfUrl: '/papers/paper-1/pdf',
       });
 
       expect(result.success).toBe(true);
