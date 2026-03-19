@@ -64,10 +64,28 @@ export function createMockClient(options: MockClientOptions = {}) {
     jobId: 'job-2',
   } satisfies ImportPaperResponse);
 
+  const detailPapers = [...papers, ...(options.searchResults ?? []), importedPaper].reduce<
+    PaperSummary[]
+  >((accumulator, paper) => {
+    if (accumulator.some((candidate) => candidate.id === paper.id)) {
+      return accumulator;
+    }
+
+    accumulator.push(paper);
+    return accumulator;
+  }, []);
+
   const getPaperDetail = vi.fn<ResearchClawClient['getPaperDetail']>().mockResolvedValue({
     paper: importedPaper,
     pdfUrl: `/papers/${importedPaper.id}/pdf`,
   } satisfies GetPaperDetailResponse);
+  getPaperDetail.mockImplementation(async ({ paperId }) => {
+    const paper = detailPapers.find((candidate) => candidate.id === paperId) ?? importedPaper;
+    return {
+      paper,
+      pdfUrl: `/papers/${paper.id}/pdf`,
+    } satisfies GetPaperDetailResponse;
+  });
 
   const getReadingDetail = vi
     .fn<ResearchClawClient['getReadingDetail']>()

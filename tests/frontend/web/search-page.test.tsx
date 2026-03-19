@@ -21,13 +21,16 @@ afterEach(() => {
 });
 
 describe('web search page', () => {
-  it('runs a browser search and opens a reader result', async () => {
+  it('runs a browser search and opens an overview result', async () => {
     const resultPaper = createPaperSummary({
       id: 'paper-3',
       title: 'Search Result Paper',
       shortId: '2503.00003',
     });
-    const { client, spies } = createMockClient({ searchResults: [resultPaper] });
+    const { client, spies } = createMockClient({
+      searchResults: [resultPaper],
+      importedPaper: resultPaper,
+    });
     setResearchClawClient(client);
 
     const router = createMemoryRouter(webRoutes, {
@@ -48,7 +51,7 @@ describe('web search page', () => {
     await user.click(resultLink);
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/papers/paper-3/reader');
+      expect(router.state.location.pathname).toBe('/papers/paper-3');
     });
   });
 });

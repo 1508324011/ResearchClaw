@@ -60,6 +60,28 @@ afterAll(async () => {
 });
 
 describe('web paper detail routes', () => {
+  it('returns overview metadata needed by the browser paper overview page', async () => {
+    const papersService = new PapersService();
+    const paper = await papersService.create({
+      title: 'Graph Foundations',
+      source: 'manual',
+      sourceUrl: 'https://example.com/papers/graph-foundations',
+      authors: ['Ada Lovelace', 'Grace Hopper'],
+      year: 2025,
+      abstract: 'A detailed overview abstract for the browser workflow.',
+    });
+    const { baseUrl } = await startServer();
+    const response = await fetch(`${baseUrl}/papers/${paper.id}`);
+
+    expect(response.status).toBe(200);
+    const payload = GetPaperDetailResponseSchema.parse(await response.json());
+    expect(payload.paper.title).toBe('Graph Foundations');
+    expect(payload.paper.authors).toEqual(['Ada Lovelace', 'Grace Hopper']);
+    expect(payload.paper.year).toBe(2025);
+    expect(payload.paper.abstract).toBe('A detailed overview abstract for the browser workflow.');
+    expect(payload.paper.sourceUrl).toBe('https://example.com/papers/graph-foundations');
+  });
+
   it('returns a browser-safe paper detail response with a local PDF asset URL', async () => {
     const papersService = new PapersService();
     const sourcePdfPath = path.join(TEST_STORAGE_DIR, 'source-paper.pdf');

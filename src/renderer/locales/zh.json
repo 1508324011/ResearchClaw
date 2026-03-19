@@ -390,6 +390,7 @@
       "importPlaceholder": "例如 2401.01234 或 https://arxiv.org/abs/2401.01234",
       "importAction": "导入论文",
       "importing": "导入中…",
+      "openOverview": "打开概览",
       "openReader": "打开阅读页",
       "openNotes": "打开笔记"
     },
@@ -418,6 +419,16 @@
       "subtitle": "直接调用生产环境会用到的 server-first 搜索接口。",
       "queryLabel": "搜索词",
       "searchAction": "搜索文献库"
+    },
+    "paperOverview": {
+      "back": "返回",
+      "notFound": "当前论文暂时无法打开概览页。",
+      "authors": "作者",
+      "year": "年份",
+      "abstract": "摘要",
+      "openReader": "打开阅读页",
+      "openNotes": "打开笔记",
+      "openSource": "打开来源"
     },
     "reader": {
       "notesSubtitle": "浏览摘要时，右侧始终显示最新笔记。",

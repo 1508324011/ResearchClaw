@@ -92,7 +92,8 @@ export function SearchPage() {
         {results.map((result) => (
           <Link
             key={result.id}
-            to={`/papers/${result.id}/reader`}
+            to={`/papers/${result.id}`}
+            state={{ from: '/search' }}
             className="block rounded-2xl border border-notion-border bg-white p-5 shadow-notion transition-colors duration-150 hover:border-notion-accent/30 hover:bg-notion-accent-light"
           >
             <div className="space-y-2">

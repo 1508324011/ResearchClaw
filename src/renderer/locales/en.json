@@ -390,6 +390,7 @@
       "importPlaceholder": "e.g. 2401.01234 or https://arxiv.org/abs/2401.01234",
       "importAction": "Import paper",
       "importing": "Importing…",
+      "openOverview": "Open overview",
       "openReader": "Open reader",
       "openNotes": "Open notes"
     },
@@ -418,6 +419,16 @@
       "subtitle": "Run the same server-first search contract the browser client will use in production.",
       "queryLabel": "Search query",
       "searchAction": "Search library"
+    },
+    "paperOverview": {
+      "back": "Back",
+      "notFound": "Paper overview is not available for this item.",
+      "authors": "Authors",
+      "year": "Year",
+      "abstract": "Abstract",
+      "openReader": "Open reader",
+      "openNotes": "Open notes",
+      "openSource": "Open source"
     },
     "reader": {
       "notesSubtitle": "Keep the latest note visible while you skim the paper summary.",

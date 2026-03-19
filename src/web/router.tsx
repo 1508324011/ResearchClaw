@@ -3,6 +3,7 @@ import { NavLink, Outlet, createBrowserRouter, type RouteObject } from 'react-ro
 import { useTranslation } from 'react-i18next';
 import { LibraryPage } from './pages/library/page';
 import { SearchPage } from './pages/search/page';
+import { PaperOverviewPage } from './pages/papers/overview/page';
 import { ReaderPage } from './pages/papers/reader/page';
 import { NotesPage } from './pages/papers/notes/page';
 
@@ -63,6 +64,7 @@ export const webRoutes: RouteObject[] = [
     children: [
       { index: true, element: <LibraryPage /> },
       { path: 'search', element: <SearchPage /> },
+      { path: 'papers/:paperId', element: <PaperOverviewPage /> },
       { path: 'papers/:paperId/reader', element: <ReaderPage /> },
       { path: 'papers/:paperId/notes', element: <NotesPage /> },
     ],

@@ -21,6 +21,24 @@ afterEach(() => {
 });
 
 describe('web library page', () => {
+  it('routes library cards through the browser overview instead of exposing deeper actions directly', async () => {
+    const { client } = createMockClient({
+      papers: [createPaperSummary({ title: 'Graph Foundations' })],
+    });
+    setResearchClawClient(client);
+
+    const router = createMemoryRouter(webRoutes, {
+      initialEntries: ['/'],
+    });
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByText('Graph Foundations')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'web.library.openOverview' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'web.library.openReader' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'web.library.openNotes' })).not.toBeInTheDocument();
+  });
+
   it('lists papers and imports a new paper through the browser workspace', async () => {
     const importedPaper = createPaperSummary({
       id: 'paper-2',

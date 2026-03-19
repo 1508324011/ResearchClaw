@@ -2,6 +2,32 @@
 
 ## 2026-03-19
 
+### feat: add browser paper overview route for workflow parity
+
+**Summary**: Completed Task 4 of the Phase-1 web workflow parity plan by inserting a browser-safe paper overview step between library/search entry points and the existing reader/notes flow.
+
+**Changes**:
+
+1. Added `src/web/pages/papers/overview/page.tsx` and wired `src/web/router.tsx` so `/papers/:paperId` now loads paper detail metadata, abstract, and actions for reader / notes / source URL through the existing browser-safe detail contract
+2. Updated `src/web/pages/library/page.tsx`, `src/web/pages/search/page.tsx`, and `src/renderer/locales/en.json` / `zh.json` so library cards now hand off through overview only, search results land on overview instead of the reader, and the new browser copy is localized in both languages
+3. Added Task 4 coverage in `tests/frontend/web/paper-overview-page.test.tsx`, extended `tests/integration/web-paper-detail.test.ts`, and hardened `tests/frontend/web/test-utils.tsx` so the browser overview route, library handoff, search handoff, and detail metadata contract are locked before reader/PDF upgrades continue
+4. Updated `README.md` and `README_CN.md` so the documented Phase-1 browser workflow now includes the new paper overview stop between import/search and deeper reading actions
+
+**Test validation**:
+
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/paper-overview-page.test.tsx` failed because `/papers/:paperId` did not exist yet and the library page exposed no `web.library.openOverview` entry point
+- Verified true RED first: `npm run test:frontend -- tests/frontend/web/search-page.test.tsx` failed because search results still navigated directly to `/papers/:paperId/reader`
+- Verified existing server contract before UI wiring: `npm run test -- tests/integration/web-paper-detail.test.ts` already passed (`3 passed`), confirming Task 4 could reuse the existing browser-safe paper detail route instead of adding a new server endpoint
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/paper-overview-page.test.tsx` passed (`2 passed`)
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/search-page.test.tsx` passed (`1 passed`)
+- Verified targeted GREEN after implementation: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx` passed (`1 passed`)
+- Verified detail-route regression coverage after implementation: `npm run test -- tests/integration/web-paper-detail.test.ts` passed (`3 passed`)
+- Verified Oracle follow-up RED/GREEN: `npm run test:frontend -- tests/frontend/web/library-page.test.tsx` first failed because library cards still exposed direct `web.library.openReader` / `web.library.openNotes` links, then passed (`2 passed`) after narrowing library cards to the overview-only handoff
+- Verified fresh repository lint after final formatting: `npm run lint` passed
+- Verified fresh repository test suite after final formatting: `npm run test` passed (`51 passed`, `1 skipped`; `532 passed`, `48 skipped`)
+- Verified fresh frontend suite after Oracle follow-up: `npm run test:frontend` passed (`11 passed`; `117 passed`)
+- Verified fresh production builds after final formatting: `npm run build` passed
+
 ### feat: add browser import workspace for workflow parity
 
 **Summary**: Completed Task 3 of the Phase-1 web workflow parity plan by replacing the narrow arXiv-only library import box with a browser-native import workspace that supports explicit identifier kinds, direct PDF uploads, local error handling, and post-import handoff into reader/notes.

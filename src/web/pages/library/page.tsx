@@ -107,16 +107,11 @@ export function LibraryPage() {
                     </div>
                     <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                       <Link
-                        to={`/papers/${paper.id}/reader`}
-                        className="rounded-lg border border-notion-border px-3 py-2 text-sm text-notion-text-secondary transition-colors hover:border-notion-accent/30 hover:text-notion-accent"
-                      >
-                        {t('web.library.openReader')}
-                      </Link>
-                      <Link
-                        to={`/papers/${paper.id}/notes`}
+                        to={`/papers/${paper.id}`}
+                        state={{ from: '/' }}
                         className="rounded-lg bg-notion-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
                       >
-                        {t('web.library.openNotes')}
+                        {t('web.library.openOverview')}
                       </Link>
                     </div>
                   </div>
