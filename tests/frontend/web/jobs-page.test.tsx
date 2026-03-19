@@ -1,14 +1,13 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import type { JobStatus, JobStreamEvent } from '@shared';
 import {
   clearResearchClawClient,
   setResearchClawClient,
 } from '../../../src/renderer/hooks/use-ipc';
-import { webRoutes } from '../../../src/web/router';
-import { createMockClient } from './test-utils';
+import { createMockClient, createWebTestRouter } from './test-utils';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -66,9 +65,7 @@ describe('web jobs page', () => {
       return () => undefined;
     });
 
-    const firstRouter = createMemoryRouter(webRoutes, {
-      initialEntries: ['/jobs'],
-    });
+    const firstRouter = createWebTestRouter(['/jobs']);
     const firstRender = render(<RouterProvider router={firstRouter} />);
 
     expect(await screen.findByText('job-running')).toBeInTheDocument();
@@ -90,9 +87,7 @@ describe('web jobs page', () => {
 
     firstRender.unmount();
 
-    const secondRouter = createMemoryRouter(webRoutes, {
-      initialEntries: ['/jobs'],
-    });
+    const secondRouter = createWebTestRouter(['/jobs']);
     render(<RouterProvider router={secondRouter} />);
 
     expect(await screen.findByText('job-running')).toBeInTheDocument();

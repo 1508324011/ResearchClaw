@@ -10,7 +10,9 @@ import type {
   SearchResponse,
 } from '@shared';
 import { vi } from 'vitest';
+import { createMemoryRouter } from 'react-router-dom';
 import type { ResearchClawClient } from '../../../src/renderer/lib/researchclaw-client';
+import { webRoutes } from '../../../src/web/router';
 
 export function createPaperSummary(overrides: Partial<PaperSummary> = {}): PaperSummary {
   return {
@@ -162,4 +164,12 @@ export function createMockClient(options: MockClientOptions = {}) {
       subscribeJobEvents,
     },
   };
+}
+
+export function createWebTestRouter(initialEntries: string[] = ['/']) {
+  window.electronAPI = undefined;
+
+  return createMemoryRouter(webRoutes, {
+    initialEntries,
+  });
 }
