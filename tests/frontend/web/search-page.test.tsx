@@ -1,14 +1,13 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '../../support/render-utils';
 import {
   clearResearchClawClient,
   setResearchClawClient,
 } from '../../../src/renderer/hooks/use-ipc';
-import { webRoutes } from '../../../src/web/router';
-import { createMockClient, createPaperSummary } from './test-utils';
+import { createMockClient, createPaperSummary, createWebTestRouter } from './test-utils';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -21,39 +20,37 @@ afterEach(() => {
 });
 
 describe('web search page', () => {
-  it('runs a browser search and opens an overview result', async () => {
+  it('uses canonical search UI and opens results through shortId routes', async () => {
     const resultPaper = createPaperSummary({
       id: 'paper-3',
-      title: 'Search Result Paper',
+      title: 'Transformer Search Result',
       shortId: '2503.00003',
     });
     const { client, spies } = createMockClient({
-      searchResults: [resultPaper],
+      papers: [resultPaper],
       importedPaper: resultPaper,
     });
     setResearchClawClient(client);
 
-    const router = createMemoryRouter(webRoutes, {
-      initialEntries: ['/search'],
-    });
+    const router = createWebTestRouter(['/search']);
 
     const user = userEvent.setup();
     render(<RouterProvider router={router} />);
 
-    expect(screen.getByRole('link', { name: 'web.search.openJobs' })).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText('web.search.queryLabel'), 'transformer');
-    await user.click(screen.getByRole('button', { name: 'web.search.searchAction' }));
+    const input = screen.getByPlaceholderText('Search by title, tag, abstract, or meaning…');
+    expect(input).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(spies.search).toHaveBeenCalledWith({ query: 'transformer', limit: 20, mode: 'text' });
+      expect(spies.listPapers).toHaveBeenCalled();
     });
 
-    const resultLink = await screen.findByRole('link', { name: /Search Result Paper/ });
-    await user.click(resultLink);
+    await user.type(input, 'transformer{Enter}');
+
+    const resultTitle = await screen.findByText('Transformer Search Result');
+    await user.click(resultTitle.closest('button') as HTMLButtonElement);
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/papers/paper-3');
+      expect(router.state.location.pathname).toBe('/papers/2503.00003');
     });
   });
 });

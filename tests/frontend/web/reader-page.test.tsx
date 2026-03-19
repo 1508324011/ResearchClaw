@@ -1,14 +1,13 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { RouterProvider } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '../../support/render-utils';
 import {
   clearResearchClawClient,
   setResearchClawClient,
 } from '../../../src/renderer/hooks/use-ipc';
-import { webRoutes } from '../../../src/web/router';
-import { createMockClient, createPaperSummary } from './test-utils';
+import { createMockClient, createPaperSummary, createWebTestRouter } from './test-utils';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -21,12 +20,16 @@ afterEach(() => {
 });
 
 describe('web reader and notes pages', () => {
-  it('loads reading detail and saves notes through the browser notes page', async () => {
-    const paper = createPaperSummary({ id: 'paper-1', title: 'Graph Foundations' });
-    const { client, spies } = createMockClient({
+  it('loads canonical notes content and opens the reader through shortId routes', async () => {
+    const paper = createPaperSummary({
+      id: 'paper-1',
+      shortId: '2503.00001',
+      title: 'Graph Foundations',
+    });
+    const { client } = createMockClient({
+      papers: [paper],
       readingDetail: {
         paper,
-        pdfUrl: '/papers/paper-1/pdf',
         note: {
           id: 'note-1',
           paperId: 'paper-1',
@@ -39,49 +42,38 @@ describe('web reader and notes pages', () => {
     });
     setResearchClawClient(client);
 
-    const router = createMemoryRouter(webRoutes, {
-      initialEntries: ['/papers/paper-1/reader'],
-    });
+    const router = createWebTestRouter(['/papers/2503.00001/notes']);
 
     const user = userEvent.setup();
     render(<RouterProvider router={router} />);
 
     expect(await screen.findByText('Graph Foundations')).toBeInTheDocument();
-    expect(await screen.findByTitle('web.reader.pdfFrame')).toHaveAttribute(
-      'src',
-      '/papers/paper-1/pdf',
-    );
     expect(screen.getByText('Original note summary.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reader' })).toBeInTheDocument();
+    expect(screen.getByText('No PDF downloaded')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download PDF' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'web.reader.openNotes' }));
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/papers/paper-1/notes');
-    });
-
-    const editor = await screen.findByLabelText('web.notes.editorLabel');
-    fireEvent.change(editor, { target: { value: 'Updated browser notes' } });
-    await waitFor(() => {
-      expect(editor).toHaveValue('Updated browser notes');
-    });
-    await user.click(screen.getByRole('button', { name: 'common.save' }));
+    await user.click(screen.getByRole('button', { name: 'Reader' }));
 
     await waitFor(() => {
-      expect(spies.saveReadingNote).toHaveBeenCalledWith({
-        paperId: 'paper-1',
-        noteId: 'note-1',
-        title: 'Reading note',
-        content: { Summary: 'Updated browser notes' },
-      });
+      expect(router.state.location.pathname).toBe('/papers/2503.00001/reader');
     });
+
+    expect(await screen.findByText('No PDF downloaded')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download PDF' })).toBeInTheDocument();
   });
 
-  it('preserves structured note fields when saving through the browser notes page', async () => {
-    const paper = createPaperSummary({ id: 'paper-1', title: 'Graph Foundations' });
-    const { client, spies } = createMockClient({
+  it('loads structured notes on the canonical notes route', async () => {
+    const paper = createPaperSummary({
+      id: 'paper-1',
+      shortId: '2503.00001',
+      title: 'Graph Foundations',
+    });
+    const { client } = createMockClient({
+      papers: [paper],
       readingDetail: {
         paper,
-        pdfUrl: '/papers/paper-1/pdf',
         note: {
           id: 'note-2',
           paperId: 'paper-1',
@@ -98,65 +90,39 @@ describe('web reader and notes pages', () => {
     });
     setResearchClawClient(client);
 
-    const router = createMemoryRouter(webRoutes, {
-      initialEntries: ['/papers/paper-1/reader'],
-    });
+    const router = createWebTestRouter(['/papers/2503.00001/notes']);
 
-    const user = userEvent.setup();
     render(<RouterProvider router={router} />);
 
-    await user.click(await screen.findByRole('link', { name: 'web.reader.openNotes' }));
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/papers/paper-1/notes');
-    });
-
-    const editor = await screen.findByLabelText('web.notes.editorLabel');
-    expect(editor).toHaveValue('Original structured summary.');
-    expect(screen.getByText('web.notes.structuredHint')).toBeInTheDocument();
-
-    fireEvent.change(editor, { target: { value: 'Updated structured summary.' } });
-    await waitFor(() => {
-      expect(editor).toHaveValue('Updated structured summary.');
-    });
-    await user.click(screen.getByRole('button', { name: 'common.save' }));
-
-    await waitFor(() => {
-      expect(spies.saveReadingNote).toHaveBeenCalledWith({
-        paperId: 'paper-1',
-        noteId: 'note-2',
-        title: 'Structured reading note',
-        content: {
-          summary: 'Updated structured summary.',
-          Questions: ['What changed?'],
-          Metadata: { section: 'intro' },
-        },
-      });
-    });
+    expect(await screen.findByText('Original structured summary.')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/papers/2503.00001/notes');
   });
 
-  it('keeps the reader workspace split beside the notes panel on large browser widths', async () => {
-    const paper = createPaperSummary({ id: 'paper-1', title: 'Graph Foundations' });
+  it('shows canonical reader controls and empty-pdf state in browser mode', async () => {
+    const paper = createPaperSummary({
+      id: 'paper-1',
+      shortId: '2503.00001',
+      title: 'Graph Foundations',
+    });
     const { client } = createMockClient({
+      papers: [paper],
       readingDetail: {
         paper,
-        pdfUrl: '/papers/paper-1/pdf',
         note: null,
       },
     });
     setResearchClawClient(client);
 
-    const router = createMemoryRouter(webRoutes, {
-      initialEntries: ['/papers/paper-1/reader'],
-    });
+    const router = createWebTestRouter(['/papers/2503.00001/reader']);
 
     render(<RouterProvider router={router} />);
 
-    const workspace = await screen.findByTestId('reader-workspace');
-    const notesPanel = screen.getByTestId('reader-notes-panel');
-
-    expect(workspace.className).toContain('lg:grid-cols-[minmax(0,1fr)_320px]');
-    expect(notesPanel.className).toContain('lg:sticky');
-    expect(notesPanel.className).toContain('lg:top-6');
+    expect(await screen.findByText('Graph Foundations')).toBeInTheDocument();
+    expect(screen.getByTitle('Chat only')).toBeInTheDocument();
+    expect(screen.getByTitle('Split view')).toBeInTheDocument();
+    expect(screen.getByTitle('PDF only')).toBeInTheDocument();
+    expect(screen.getByText('No PDF downloaded')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download PDF' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/papers/2503.00001/reader');
   });
 });
