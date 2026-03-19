@@ -1,5 +1,6 @@
 import http from 'http';
 import { getServerConfig, type ServerConfig } from './config/server-config';
+import { handleExternalSearchRoute, isExternalSearchRoute } from './routes/external-search.routes';
 import { handleHealthRoute, isHealthRoute } from './routes/health.routes';
 import { handleImportRoute, isImportRoute } from './routes/import.routes';
 import { handleJobsRoute, isJobsRoute } from './routes/jobs.routes';
@@ -23,6 +24,11 @@ export function createResearchClawServerApp(config: ServerConfig = getServerConf
 
       if (isImportRoute(req)) {
         await handleImportRoute(req, res);
+        return;
+      }
+
+      if (isExternalSearchRoute(req)) {
+        await handleExternalSearchRoute(req, res);
         return;
       }
 
