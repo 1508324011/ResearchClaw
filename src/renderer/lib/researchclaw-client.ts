@@ -1,4 +1,6 @@
 import type {
+  ExternalPaperSearchRequest,
+  ExternalPaperSearchResponse,
   GetPaperDetailRequest,
   GetPaperDetailResponse,
   GetReadingDetailRequest,
@@ -23,6 +25,7 @@ export interface ResearchClawClient {
   getReadingDetail(request: GetReadingDetailRequest): Promise<GetReadingDetailResponse>;
   saveReadingNote(request: SaveReadingNoteRequest): Promise<SaveReadingNoteResponse>;
   search(request: SearchRequest): Promise<SearchResponse>;
+  searchExternal(request: ExternalPaperSearchRequest): Promise<ExternalPaperSearchResponse>;
   listJobStatus(): Promise<JobStatus[]>;
   subscribeJobEvents(jobId: string, onEvent: (event: JobStreamEvent) => void): Promise<() => void>;
 }

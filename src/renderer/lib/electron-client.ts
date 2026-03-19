@@ -1,4 +1,6 @@
 import type {
+  ExternalPaperSearchRequest,
+  ExternalPaperSearchResponse,
   GetPaperDetailRequest,
   GetPaperDetailResponse,
   GetReadingDetailRequest,
@@ -177,6 +179,14 @@ export class ElectronClient implements ResearchClawClient {
       })),
       total: result.total,
     };
+  }
+
+  async searchExternal(request: ExternalPaperSearchRequest): Promise<ExternalPaperSearchResponse> {
+    return invokeElectron<ExternalPaperSearchResponse>(
+      'papers:search',
+      request.query,
+      request.limit,
+    );
   }
 
   async listJobStatus(): Promise<JobStatus[]> {

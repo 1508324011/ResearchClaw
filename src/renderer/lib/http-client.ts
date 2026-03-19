@@ -1,4 +1,6 @@
 import type {
+  ExternalPaperSearchRequest,
+  ExternalPaperSearchResponse,
   GetPaperDetailRequest,
   GetPaperDetailResponse,
   GetReadingDetailRequest,
@@ -20,6 +22,7 @@ import type { ResearchClawClient } from './researchclaw-client';
 const routes = {
   papers: '/papers',
   paperDetail: (paperId: string) => `/papers/${paperId}`,
+  externalSearch: '/papers/search/external',
   importByIdentifier: '/papers/import',
   importPdf: '/import/pdf',
   readingDetail: (paperId: string) => `/reading/${paperId}`,
@@ -74,6 +77,10 @@ export class HttpClient implements ResearchClawClient {
     if (request.mode) params.append('mode', request.mode);
 
     return this.getJson<SearchResponse>(`${routes.search}?${params.toString()}`);
+  }
+
+  async searchExternal(request: ExternalPaperSearchRequest): Promise<ExternalPaperSearchResponse> {
+    return this.postJson<ExternalPaperSearchResponse>(routes.externalSearch, request);
   }
 
   async listJobStatus(): Promise<JobStatus[]> {
@@ -187,7 +194,29 @@ export class HttpClient implements ResearchClawClient {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      let detail = '';
+
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        try {
+          const body = (await response.clone().json()) as { error?: string };
+          if (typeof body.error === 'string' && body.error.trim().length > 0) {
+            detail = body.error;
+          }
+        } catch {}
+      }
+
+      if (!detail) {
+        try {
+          const text = (await response.clone().text()).trim();
+          if (text.length > 0) {
+            detail = text;
+          }
+        } catch {}
+      }
+
+      const statusMessage = detail || response.statusText;
+      throw new Error(`HTTP ${response.status}: ${statusMessage}`);
     }
 
     return response;

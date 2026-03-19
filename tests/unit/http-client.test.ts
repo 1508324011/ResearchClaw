@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import type {
+  ExternalPaperSearchResponse,
   GetPaperDetailResponse,
   GetReadingDetailResponse,
   ImportPaperResponse,
@@ -74,6 +75,21 @@ function createMockClient() {
     results: [createPaperSummary({ title: 'Search Result' })],
     total: 1,
   } satisfies SearchResponse);
+  const searchExternal = vi.fn<ResearchClawClient['searchExternal']>().mockResolvedValue({
+    results: [
+      {
+        paperId: 'paper-2',
+        title: 'External Search Result',
+        authors: [{ name: 'Alice' }],
+        year: 2024,
+        abstract: 'External paper abstract.',
+        citationCount: 12,
+        externalIds: { ArXiv: '2401.00002' },
+        url: 'https://example.com/paper',
+      },
+    ],
+    total: 1,
+  } satisfies ExternalPaperSearchResponse);
   const listJobStatus = vi.fn<ResearchClawClient['listJobStatus']>().mockResolvedValue([
     {
       jobId: 'job-1',
@@ -95,6 +111,7 @@ function createMockClient() {
     getReadingDetail,
     saveReadingNote,
     search,
+    searchExternal,
     listJobStatus,
     subscribeJobEvents,
   };
@@ -109,6 +126,7 @@ function createMockClient() {
       getReadingDetail,
       saveReadingNote,
       search,
+      searchExternal,
       listJobStatus,
       subscribeJobEvents,
     },
@@ -315,6 +333,41 @@ describe('HttpClient', () => {
     );
   });
 
+  it('performs external paper search', async () => {
+    const mockResponse: ExternalPaperSearchResponse = {
+      results: [
+        {
+          paperId: 'paper-2',
+          title: 'External Search Result',
+          authors: [{ name: 'Alice' }],
+          year: 2024,
+          abstract: 'External paper abstract.',
+          citationCount: 12,
+          externalIds: { ArXiv: '2401.00002' },
+          url: 'https://example.com/paper',
+        },
+      ],
+      total: 1,
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      }),
+    );
+
+    const client = new HttpClient(baseUrl);
+    const result = await client.searchExternal({ query: 'external', limit: 20 });
+
+    expect(result).toEqual(mockResponse);
+    expect(fetch).toHaveBeenCalledWith(
+      `${baseUrl}/papers/search/external`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
   it('lists job status', async () => {
     const mockResponse: JobStatus[] = [
       {
@@ -480,12 +533,44 @@ describe('HttpClient', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
+        headers: {
+          get: () => null,
+        },
+        clone: () => ({
+          text: async () => '',
+        }),
       }),
     );
 
     const client = new HttpClient(baseUrl);
 
     await expect(client.listPapers({})).rejects.toThrow('HTTP 500: Internal Server Error');
+  });
+
+  it('prefers JSON error messages when the server provides them', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 413,
+        statusText: 'Payload Too Large',
+        headers: {
+          get: (name: string) =>
+            name.toLowerCase() === 'content-type' ? 'application/json; charset=utf-8' : null,
+        },
+        clone: () => ({
+          json: async () => ({ error: 'Request body exceeds the 25 MB upload limit.' }),
+          text: async () =>
+            JSON.stringify({ error: 'Request body exceeds the 25 MB upload limit.' }),
+        }),
+      }),
+    );
+
+    const client = new HttpClient(baseUrl);
+
+    await expect(client.importPdf(createPdfFile())).rejects.toThrow(
+      'HTTP 413: Request body exceeds the 25 MB upload limit.',
+    );
   });
 });
 
@@ -537,18 +622,18 @@ describe('use-ipc transport fallback', () => {
     });
     expect(noteResult.note.id).toBe('note-1');
 
-    expect(spies.search).toHaveBeenCalledWith({ query: 'test', limit: 10, mode: 'text' });
+    expect(spies.searchExternal).toHaveBeenCalledWith({ query: 'test', limit: 10 });
     expect(searchResult).toEqual({
       results: [
         {
-          paperId: 'paper-1',
-          title: 'Search Result',
+          paperId: 'paper-2',
+          title: 'External Search Result',
           authors: [{ name: 'Alice' }],
-          year: null,
-          abstract: null,
-          citationCount: 0,
-          externalIds: { ArXiv: '2503.00001' },
-          url: null,
+          year: 2024,
+          abstract: 'External paper abstract.',
+          citationCount: 12,
+          externalIds: { ArXiv: '2401.00002' },
+          url: 'https://example.com/paper',
         },
       ],
       total: 1,

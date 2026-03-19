@@ -13,4 +13,5 @@ export * from './utils/bibtex';
 export * from './contracts/papers';
 export * from './contracts/reading';
 export * from './contracts/search';
+export * from './contracts/external-search';
 export * from './contracts/jobs';
