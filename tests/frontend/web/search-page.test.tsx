@@ -8,6 +8,7 @@ import {
   setResearchClawClient,
 } from '../../../src/renderer/hooks/use-ipc';
 import { createMockClient, createPaperSummary, createWebTestRouter } from './test-utils';
+import type { SearchResponse } from '@shared';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -51,6 +52,52 @@ describe('web search page', () => {
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/papers/2503.00003');
+    });
+  });
+
+  it('uses browser semantic search when the web host has no local corpus match', async () => {
+    const remotePaper = createPaperSummary({
+      id: 'paper-9',
+      shortId: '2503.00009',
+      title: 'Browser Semantic Result',
+      abstract: 'A remotely discovered paper.',
+    });
+    const { client, spies } = createMockClient({
+      papers: [],
+      searchResults: [remotePaper],
+      importedPaper: remotePaper,
+    });
+    spies.search.mockImplementation(async (request) => {
+      return {
+        mode: request.mode ?? 'text',
+        results: [remotePaper],
+        total: 1,
+      } satisfies SearchResponse;
+    });
+
+    setResearchClawClient(client);
+
+    const router = createWebTestRouter(['/search']);
+    const user = userEvent.setup();
+
+    render(<RouterProvider router={router} />);
+
+    const input = screen.getByPlaceholderText('Search by title, tag, abstract, or meaning…');
+    await user.type(input, 'browser semantic{Enter}');
+
+    await waitFor(() => {
+      expect(spies.search).toHaveBeenCalledWith({
+        query: 'browser semantic',
+        limit: 18,
+        mode: 'semantic',
+      });
+    });
+
+    const resultTitle = await screen.findByText('Browser Semantic Result');
+    await user.click(resultTitle.closest('button') as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/papers/2503.00009');
     });
   });
 });

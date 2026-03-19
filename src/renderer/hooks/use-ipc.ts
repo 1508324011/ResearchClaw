@@ -92,6 +92,27 @@ function toLegacySearchResponse(searchResponse: SearchResponse): {
   };
 }
 
+function toLegacySemanticSearchResult(searchResponse: SearchResponse): SemanticSearchResult {
+  return {
+    mode: searchResponse.mode === 'semantic' ? 'semantic' : 'fallback',
+    fallbackReason:
+      searchResponse.mode === 'semantic' ? undefined : 'Showing keyword search results instead.',
+    papers: searchResponse.results.map((item) => ({
+      id: item.id,
+      shortId: item.shortId ?? '',
+      title: item.title,
+      authors: item.authors,
+      year: item.year,
+      abstract: item.abstract ?? null,
+      similarityScore: item.score ?? 0,
+      matchedChunks: item.excerpt ? [item.excerpt] : [],
+      sourceUrl: item.sourceUrl,
+      tagNames: item.tagNames,
+      createdAt: item.createdAt,
+    })),
+  };
+}
+
 function toLegacyReadingNote(note: GetReadingDetailResponse['note']): ReadingNote | null {
   if (!note) {
     return null;
@@ -198,6 +219,14 @@ async function invokeThroughFallback<T>(channel: string, ...args: unknown[]): Pr
         mode: 'text',
       });
       return toLegacySearchResponse(response) as T;
+    }
+    case 'papers:semanticSearch': {
+      const response = await client.search({
+        query: args[0] as string,
+        limit: args[1] as number | undefined,
+        mode: 'semantic',
+      });
+      return toLegacySemanticSearchResult(response) as T;
     }
     case 'settings:get':
       return {
