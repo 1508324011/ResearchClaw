@@ -144,7 +144,7 @@ describe('web import routes', () => {
     }
   });
 
-  it('rejects unsupported identifier kinds in the first web slice', async () => {
+  it('imports a DOI identifier into the server-owned library', async () => {
     const { baseUrl } = await startServer();
 
     const response = await fetch(`${baseUrl}/import/identifier`, {
@@ -153,10 +153,16 @@ describe('web import routes', () => {
       body: JSON.stringify({ value: '10.1000/test-doi', kind: 'doi' }),
     });
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
-      error: 'Task 4 only supports arXiv identifier imports.',
-    });
+    expect(response.status).toBe(200);
+    const payload = ImportPaperResponseSchema.parse(await response.json());
+    expect(payload.paper.title).toBe('10.1000/test-doi');
+    expect(payload.paper.sourceUrl).toBe('https://doi.org/10.1000/test-doi');
+
+    const papersService = new PapersService();
+    const storedPaper = await papersService.getById(payload.paper.id);
+    expect(storedPaper?.title).toBe('10.1000/test-doi');
+    expect(storedPaper?.sourceUrl).toBe('https://doi.org/10.1000/test-doi');
+    expect(storedPaper?.tagNames).toContain('doi');
   });
 
   it('rejects invalid identifier payloads with a 400 response', async () => {

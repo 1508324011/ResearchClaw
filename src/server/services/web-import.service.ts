@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { extractArxivId } from '@shared';
 import { PapersService } from '../../main/services/papers.service';
 import {
   ImportByIdentifierRequestSchema,
@@ -56,6 +57,29 @@ function normalizeArxivId(value: string): string {
   return candidate.replace(/v\d+$/i, '');
 }
 
+function normalizeDoi(value: string): string {
+  const trimmed = value.trim().replace(/^doi:\s*/i, '');
+  if (!/^10\.\S+\/\S+$/i.test(trimmed)) {
+    throw new WebImportError(400, 'Invalid DOI identifier.');
+  }
+
+  return trimmed;
+}
+
+function normalizeUrl(value: string): string {
+  try {
+    return new URL(value.trim()).toString();
+  } catch {
+    throw new WebImportError(400, 'Invalid URL identifier.');
+  }
+}
+
+function titleFromUrl(value: string): string {
+  const url = new URL(value);
+  const slug = path.basename(url.pathname).replace(/\.pdf$/i, '');
+  return (slug || url.hostname).replace(/[._-]+/g, ' ').trim() || value;
+}
+
 async function fetchArxivMetadata(arxivId: string): Promise<ArxivMetadata> {
   const sourceUrl = `https://arxiv.org/abs/${arxivId}`;
   const response = await fetch(sourceUrl, {
@@ -90,6 +114,38 @@ async function fetchArxivMetadata(arxivId: string): Promise<ArxivMetadata> {
 export class WebImportService {
   private readonly papersService = new PapersService();
 
+  private async finalizeImportResponse(
+    paper: Awaited<ReturnType<PapersService['getById']>> extends infer T ? Exclude<T, null> : never,
+  ): Promise<ImportPaperResponse> {
+    return ImportPaperResponseSchema.parse({
+      paper: toPaperSummary(paper),
+      jobId: `import:${paper.id}`,
+    });
+  }
+
+  private async createManualIdentifierImport(input: {
+    title: string;
+    sourceUrl: string;
+    tags: string[];
+    pdfUrl?: string;
+  }): Promise<ImportPaperResponse> {
+    const created = await this.papersService.create({
+      title: input.title,
+      source: 'manual',
+      sourceUrl: input.sourceUrl,
+      pdfUrl: input.pdfUrl,
+      tags: input.tags,
+      authors: [],
+    });
+
+    if (input.pdfUrl) {
+      await this.papersService.downloadPdf(created.id, input.pdfUrl);
+    }
+
+    const storedPaper = await this.papersService.getById(created.id);
+    return this.finalizeImportResponse(storedPaper ?? created);
+  }
+
   async importPdf(buffer: Buffer, filename: string): Promise<ImportPaperResponse> {
     const safeFilename = path.basename(filename || 'uploaded-paper.pdf');
     if (path.extname(safeFilename).toLowerCase() !== '.pdf') {
@@ -120,8 +176,30 @@ export class WebImportService {
     }
 
     const request = parsedRequest.data;
-    if (request.kind !== 'arxiv') {
-      throw new WebImportError(400, 'Task 4 only supports arXiv identifier imports.');
+    if (request.kind === 'doi') {
+      const doi = normalizeDoi(request.value);
+      return this.createManualIdentifierImport({
+        title: doi,
+        sourceUrl: `https://doi.org/${doi}`,
+        tags: ['doi'],
+      });
+    }
+
+    if (request.kind === 'url') {
+      const normalizedUrl = normalizeUrl(request.value);
+      const arxivId = extractArxivId(normalizedUrl);
+      if (arxivId) {
+        request.kind = 'arxiv';
+        request.value = arxivId;
+      } else {
+        const isPdfUrl = normalizedUrl.toLowerCase().endsWith('.pdf');
+        return this.createManualIdentifierImport({
+          title: titleFromUrl(normalizedUrl),
+          sourceUrl: normalizedUrl,
+          pdfUrl: isPdfUrl ? normalizedUrl : undefined,
+          tags: isPdfUrl ? ['pdf', 'url'] : ['url'],
+        });
+      }
     }
 
     const arxivId = normalizeArxivId(request.value);
