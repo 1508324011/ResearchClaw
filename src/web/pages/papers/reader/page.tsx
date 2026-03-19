@@ -67,7 +67,10 @@ export function ReaderPage() {
   }
 
   return (
-    <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section
+      data-testid="reader-workspace"
+      className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
+    >
       <article className="rounded-2xl border border-notion-border bg-white p-6 shadow-notion">
         <div className="mb-6 space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-notion-text-tertiary">
@@ -91,7 +94,10 @@ export function ReaderPage() {
         </div>
       </article>
 
-      <aside className="rounded-2xl border border-notion-border bg-white p-6 shadow-notion">
+      <aside
+        data-testid="reader-notes-panel"
+        className="rounded-2xl border border-notion-border bg-white p-6 shadow-notion lg:sticky lg:top-6"
+      >
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-notion-text">{t('papers.notes')}</h3>

@@ -134,4 +134,29 @@ describe('web reader and notes pages', () => {
       });
     });
   });
+
+  it('keeps the reader workspace split beside the notes panel on large browser widths', async () => {
+    const paper = createPaperSummary({ id: 'paper-1', title: 'Graph Foundations' });
+    const { client } = createMockClient({
+      readingDetail: {
+        paper,
+        pdfUrl: '/papers/paper-1/pdf',
+        note: null,
+      },
+    });
+    setResearchClawClient(client);
+
+    const router = createMemoryRouter(webRoutes, {
+      initialEntries: ['/papers/paper-1/reader'],
+    });
+
+    render(<RouterProvider router={router} />);
+
+    const workspace = await screen.findByTestId('reader-workspace');
+    const notesPanel = screen.getByTestId('reader-notes-panel');
+
+    expect(workspace.className).toContain('lg:grid-cols-[minmax(0,1fr)_320px]');
+    expect(notesPanel.className).toContain('lg:sticky');
+    expect(notesPanel.className).toContain('lg:top-6');
+  });
 });
