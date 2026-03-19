@@ -2,6 +2,16 @@
 
 ## 2026-03-19
 
+### fix: restore browser semantic search and PDF upload paths
+
+**Summary**: Closed the two manual-test browser host gaps by routing semantic search through the existing HTTP search API and teaching the canonical import modal to upload real browser `File` objects instead of assuming Electron file dialogs and local paths.
+
+**Changes**:
+
+1. Updated `src/renderer/hooks/use-ipc.ts` so browser-host `papers:semanticSearch` now maps to `ResearchClawClient.search({ mode: 'semantic' })` and returns canonical semantic/fallback search results instead of throwing an unsupported-channel error
+2. Refactored `src/renderer/components/import-modal.tsx` so the `Local` tab supports a browser File API branch with hidden file input, drag/drop `File` handling, browser-side deduping, and sequential `client.importPdf(file)` uploads while preserving the existing Electron path/dialog workflow
+3. Added/updated `tests/frontend/web/import-modal-browser.test.tsx` and `tests/frontend/web/search-page.test.tsx` to lock in the pure-browser regression coverage for semantic remote search and PDF upload without Electron dialogs
+
 ### refactor: bootstrap web through the shared renderer shell
 
 **Summary**: Landed the first executable renderer-first batch by extracting a shared host abstraction, reusing the canonical renderer route tree for web, and proving the browser shell handoff with dedicated parity tests.
